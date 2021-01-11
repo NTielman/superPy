@@ -29,6 +29,34 @@ length = 50
 scheidingslijn = '-' * length
 header_lines = '#' * length
 
+class Supermarket():
+    def __init__(self, inventory):
+        self.inventory = inventory
+    
+    def buy(self, product, quantity):
+        self.inventory[product]["quantity"] += quantity
+
+    def sell(self, product, quantity):
+        if quantity > self.inventory[product]["quantity"]:
+            print("not enough in stock to complete transaction")
+        else:
+            self.inventory[product]["quantity"] -= quantity
+            products_left = self.inventory[product]["quantity"]
+            if products_left <= 1:
+                self.warn("low_stock")
+
+    def warn(self, message):
+        if message == "low_stock":
+            print("Warning: some items are low on stock")
+            answer = input("Would you like to print a low-stock report? (y/n)\n")
+            if answer == 'y':
+                print_report(low_stock_report(self.inventory))
+        elif message == "expires_soon":
+            print("Warning: some items are close to expiring")
+            answer = input("Would you like to print an expiry report? (y/n)\n")
+            if answer == 'y':
+                print_report(near_expiry_report(self.inventory))
+
 class CurrentDate():
     def __init__(self, year=2021, month=1, day=11):
         self.year = year
@@ -41,6 +69,10 @@ class CurrentDate():
             self.month += amount
         elif time_unit == 'year':
             self.year += amount
+    def reset_time(self):
+        self.year = 2021
+        self.month = 1
+        self.day = 11
 
 # returns list of all products in inventory
 def get_prod_list(inventory):
@@ -129,6 +161,10 @@ def get_prod_costs(inventory):
 #print_report(get_prod_costs(my_inventory))
 #print_report(low_stock_report(my_inventory))
 today = CurrentDate()
+superpy = Supermarket(my_inventory)
 #print_report(near_expiry_report(my_inventory))
-today.advance_time(amount=2, time_unit='month')
-print(today.month)
+#today.advance_time(amount=2, time_unit='month')
+#print(today.month)
+superpy.buy('bananas', 2)
+superpy.sell('bananas', 8)
+#print(superpy.inventory['bananas'])
