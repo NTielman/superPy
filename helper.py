@@ -18,20 +18,36 @@ my_inventory = {
         "quantity": 1,
         "expiry_date": "2021-01-17",
         "cost": 2
+    },
+    "watermelons": {
+        "quantity": 3,
+        "expiry_date": "2021-01-20",
+        "cost": 5
     }
 }
-scheidingslijn = '-' * 54
-header_lines = '#' * 54
-current_month = 1
-current_day = 11
-current_year = 2021
+length = 50
+scheidingslijn = '-' * length
+header_lines = '#' * length
+
+class CurrentDate():
+    def __init__(self, year=2021, month=1, day=11):
+        self.year = year
+        self.month = month
+        self.day = day
+    def advance_time(self, amount=1, time_unit='day'):
+        if time_unit == 'day':
+            self.day += amount
+        elif time_unit == 'month':
+            self.month += amount
+        elif time_unit == 'year':
+            self.year += amount
 
 # returns list of all products in inventory
 def get_prod_list(inventory):
     product_list = []
     for product in inventory:
         product_list.append(f'{product}')
-    return product_list
+    return product_list, 'products'
 
 # formats and prints out a report to console or to a csv file
 def print_report(report):
@@ -41,15 +57,19 @@ def print_report(report):
         print('LOW STOCK REPORT')
     elif report_type == 'sales':
         print('SALES REPORT')
+    elif report_type == 'products':
+        print('PRODUCTS REPORT')
     elif report_type == 'expiry':
         print('EXPIRY REPORT')
+    elif report_type == 'prod_costs':
+        print('COST PER UNIT REPORT')
     elif report_type == 'inventory':
         print('INVENTORY REPORT')
     print(header_lines)
 
     if report_type == 'inventory':
         print(scheidingslijn)
-        print('| Product Name | Count | Buy Price | Expiration Date |')
+        print('| Product\t | Amnt | Cost\t | Expiry Date\t |')
         print(scheidingslijn)
     for line in report[0]:
         print(line)
@@ -60,7 +80,7 @@ def inventory_report(inventory):
     report = []
     for product in inventory:
         report.append(
-            f'| {product}\t | {inventory[product]["quantity"]}\t | {inventory[product]["purchase_price"]}\t | {inventory[product]["expiry_date"]}\t |')
+            f'| {product}\t | {inventory[product]["quantity"]}\t | {inventory[product]["cost"]}\t | {inventory[product]["expiry_date"]}\t |')
     return report, 'inventory'
 
 # returns a list of products running low on stock (pass in minimun stock amount)
@@ -71,7 +91,7 @@ def low_stock_report(inventory):
         # if 2 or less of product remaining
         if prod_quantity <= 2:
             low_stock_items.append(
-                f'| Product Name: {product} | Product Quantity: {prod_quantity}')
+                f'| Product: {product}\t | Product Quantity: {prod_quantity}')
     return low_stock_items, 'low_stock'
 
 #returns a list of products near expiring (pass in num months from now) 
@@ -83,16 +103,16 @@ def near_expiry_report(inventory):
         expiry_year = int(expiry_date[0])
         expiry_month = int(expiry_date[1])
         expiry_day = int(expiry_date[2])
-        if expiry_year < current_year:
+        if expiry_year < today.year:
             expiry_list.append(f'{product} EXPIRED last year in {expiry_year}')
-        elif expiry_year == current_year:
-            if expiry_month < current_month:
+        elif expiry_year == today.year:
+            if expiry_month < today.month:
                 expiry_list.append(f'{product} EXPIRED this year in {expiry_month}')
-            elif expiry_month == current_month:
-                if expiry_day < current_day:
+            elif expiry_month == today.month:
+                if expiry_day < today.day:
                     expiry_list.append(f'{product} EXPIRED this month on {expiry_day}')
                 else:
-                    expiry_list.append(f'{product} expires soon in {expiry_day - current_day} days')
+                    expiry_list.append(f'{product} expires soon in {expiry_day - today.day} days')
     return expiry_list, 'expiry'
 
 
@@ -101,12 +121,14 @@ def get_prod_costs(inventory):
     product_costs = []
     for product in inventory:
         product_costs.append(
-            f'Product Name: {product} | Cost: {inventory[product]["cost"]}')
-    return product_costs
+            f'Product: {product}\t | Cost: {inventory[product]["cost"]}')
+    return product_costs, 'prod_costs'
 
-
-# print_report(inventory_report(my_inventory))
-# print(get_prod_list(my_inventory))
-# print(get_prod_costs(my_inventory))
-# print_report(low_stock_report(my_inventory))
-print_report(near_expiry_report(my_inventory))
+#print_report(inventory_report(my_inventory))
+#print_report(get_prod_list(my_inventory))
+#print_report(get_prod_costs(my_inventory))
+#print_report(low_stock_report(my_inventory))
+today = CurrentDate()
+#print_report(near_expiry_report(my_inventory))
+today.advance_time(amount=2, time_unit='month')
+print(today.month)
