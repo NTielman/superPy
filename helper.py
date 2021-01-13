@@ -1,33 +1,31 @@
+from datetime import date, timedelta
+
+current = date.today()
 my_inventory = {
     "apples": {
         "quantity": 2,
         "expiry_date": "2020-01-01",
         "cost": 0.5,
-        "price": 1
     },
     "bananas": {
         "quantity": 7,
         "expiry_date": "2021-07-01",
         "cost": 0.2,
-        "price": 0.8
     },
     "oranges": {
         "quantity": 5,
         "expiry_date": "2022-02-06",
         "cost": 0.6,
-        "price": 2
     },
     "kiwi's": {
-        "quantity": 1,
+        "quantity": 3,
         "expiry_date": "2021-01-17",
         "cost": 2,
-        "price": 3
     },
     "watermelons": {
         "quantity": 3,
         "expiry_date": "2021-01-20",
         "cost": 5,
-        "price": 15
     }
 }
 
@@ -39,7 +37,7 @@ header_lines = '#' * length
 
 class Supermarket():
     purchases = {}
-    sales = []
+    sales = {}
     expiry_dates = {}
 
     def __init__(self, inventory={}):
@@ -57,7 +55,19 @@ class Supermarket():
                 # add products and prod quantities to expiry date
                 self.expiry_dates[expiry_date][product] = quantity
 
-    def buy(self, product, quantity, cost, exp_date):
+    def discard_items(self, product, exp_date, quantity=1):
+        '''removes a specific item from inventory'''
+        if quantity >= self.inventory[product]["quantity"]:
+            del self.inventory[product]
+        else:
+            self.inventory[product]["quantity"] -= quantity
+        # remove items from expiry dates
+        if quantity >= self.expiry_dates[exp_date][product]:
+            del self.expiry_dates[exp_date][product]
+        else:
+            self.expiry_dates[exp_date][product] -= quantity
+
+    def buy(self, product, quantity, cost_per_unit, exp_date):
         # if product already in inventory
         if product in self.inventory:
             # update inventory quantity
@@ -67,9 +77,7 @@ class Supermarket():
             prod_info = {
                 "quantity": quantity,
                 "expiry_date": exp_date,
-                "cost": cost,
-                "price": 15
-                # set price on sale or on purchase of product?
+                "cost": cost_per_unit,
             }
             # add product to inventory
             self.inventory[product] = prod_info
@@ -77,29 +85,57 @@ class Supermarket():
         if not (exp_date in self.expiry_dates):
             # create a dict
             self.expiry_dates[exp_date] = {}
-        # add products and prod quantities to expiry date
-        self.expiry_dates[exp_date][product] = quantity
+        # if product not yet in dict
+        if not (product in self.expiry_dates[exp_date]):
+            # add products and prod quantities to expiry date
+            self.expiry_dates[exp_date][product] = quantity
+        else:
+            self.expiry_dates[exp_date][product] += quantity
         # if purchase date not yet in purchases
-        if not (current.date in self.purchases):
+        current_date = current.isoformat()
+        if not (current_date in self.purchases):
             # create a transaction (purchases) list
-            self.purchases[current.date] = []
+            self.purchases[current_date] = []
         # add purchase info to purchase date
+        transaction_id = f'#SUP{current.strftime("%y%m%d")}PURCH0{len(self.purchases[current_date]) + 1}'
         purchase_info = {
             "product": product,
             "quantity": quantity,
-            "total_cost": round((cost*quantity), 2),
-            "id": len(self.purchases[current.date]) + 1
+            "total_cost": round((cost_per_unit*quantity), 2),
+            "id": transaction_id
         }
-        self.purchases[current.date].append(purchase_info)
+        self.purchases[current_date].append(purchase_info)
 
-    def sell(self, product, quantity):
+    def sell(self, product, quantity, price_per_unit, exp_date):
         if quantity > self.inventory[product]["quantity"]:
-            print("not enough in stock to complete transaction")
+            return "not enough in stock to complete transaction"
+        elif quantity > self.expiry_dates[exp_date][product]:
+            # ensure items of differing expiration dates are entered seperately
+            return "incorrect quantity or expiration date provided"
+        # reduce product inventory quantities
+        self.inventory[product]["quantity"] -= quantity
+        # remove products and prod quantities from expiry date
+        if quantity >= self.expiry_dates[exp_date][product]:
+            del self.expiry_dates[exp_date][product]
         else:
-            self.inventory[product]["quantity"] -= quantity
-            products_left = self.inventory[product]["quantity"]
-            if products_left <= 1:
-                self.warn("low_stock")
+            self.expiry_dates[exp_date][product] -= quantity
+        # if transaction date not yet in sales
+        current_date = current.isoformat()
+        if not (current_date in self.sales):
+            # create a transaction (sales) list
+            self.sales[current_date] = []
+        # add sale info to transaction date
+        transaction_id = f'#SUP{current.strftime("%y%m%d")}SALE0{len(self.sales[current_date]) + 1}'
+        sale_info = {
+            "product": product,
+            "quantity": quantity,
+            "total_income": round((price_per_unit*quantity), 2),
+            "id": transaction_id
+        }
+        self.sales[current_date].append(sale_info)
+        products_left = self.inventory[product]["quantity"]
+        if products_left <= 1:
+            self.warn("low_stock")
 
     def warn(self, message):
         if message == "low_stock":
@@ -113,6 +149,9 @@ class Supermarket():
             answer = input("Would you like to print an expiry report? (y/n)\n")
             if answer == 'y':
                 print_report(self.get_expiry_report())
+        elif message == "expired_items":
+            print("Warning: some items have expired")
+            print("Consider discarding the items from inventory")
 
     # creates and returns a list of inventory report
     def get_inventory_report(self):
@@ -122,37 +161,77 @@ class Supermarket():
                 f'| {product}\t | {self.inventory[product]["quantity"]}\t | {self.inventory[product]["cost"]}\t | {self.inventory[product]["expiry_date"]}\t |')
         return report, 'inventory'
 
-    # returns list of all products in inventory
     def get_products_report(self):
+        '''returns a list of all products in inventory'''
         report = []
         for product in self.inventory:
             report.append(f'{product}')
         return report, 'products'
 
     def get_purchase_report(self, purchase_date='all'):
+        '''returns all purchase transactions 
+        or all purchases made on a specific date'''
         report = []
+        total_cost = 0
         if purchase_date == 'all':
             # return all purchases
             for date in self.purchases:
                 for purchase_num in range(len(self.purchases[date])):
                     product = self.purchases[date][purchase_num]["product"]
                     quantity = self.purchases[date][purchase_num]["quantity"]
-                    total_cost = self.purchases[date][purchase_num]["total_cost"]
+                    total_spent = self.purchases[date][purchase_num]["total_cost"]
                     trans_id = self.purchases[date][purchase_num]["id"]
-                    report.append(f'{date} | {product} | {quantity} | {total_cost} | {trans_id}')
+                    total_cost += total_spent
+                    report.append(
+                        f'{date} | {product} | {quantity} | {total_spent} | {trans_id}')
         elif purchase_date in self.purchases:
             for purchase_num in range(len(self.purchases[purchase_date])):
                 product = self.purchases[purchase_date][purchase_num]["product"]
                 quantity = self.purchases[purchase_date][purchase_num]["quantity"]
-                total_cost = self.purchases[purchase_date][purchase_num]["total_cost"]
+                total_spent = self.purchases[purchase_date][purchase_num]["total_cost"]
                 trans_id = self.purchases[purchase_date][purchase_num]["id"]
-                report.append(f'{purchase_date} | {product} | {quantity} | {total_cost} | {trans_id}')
+                total_cost += total_spent
+                report.append(
+                    f'{purchase_date} | {product} | {quantity} | {total_spent} | {trans_id}')
         else:
-            report.append(f'No purchase records found for date: {purchase_date}')
+            report.append(
+                f'No purchase records found for date: {purchase_date}')
+        report.append(f'Total Cost: ${round(total_cost, 2)}')
         return report, 'purchases'
 
-    # returns a list of products running low on stock
+    def get_sales_report(self, sell_date='all'):
+        '''returns all sales transactions 
+        or all sales made on a specific date'''
+        report = []
+        total_revenue = 0
+        if sell_date == 'all':
+            # return all sales
+            for date in self.sales:
+                for sale_num in range(len(self.sales[date])):
+                    product = self.sales[date][sale_num]["product"]
+                    quantity = self.sales[date][sale_num]["quantity"]
+                    total_income = self.sales[date][sale_num]["total_income"]
+                    trans_id = self.sales[date][sale_num]["id"]
+                    total_revenue += total_income
+                    report.append(
+                        f'{date} | {product} | {quantity} | {total_income} | {trans_id}')
+        elif sell_date in self.sales:
+            for sale_num in range(len(self.sales[sell_date])):
+                product = self.sales[sell_date][sale_num]["product"]
+                quantity = self.sales[sell_date][sale_num]["quantity"]
+                total_income = self.sales[sell_date][sale_num]["total_income"]
+                trans_id = self.sales[sell_date][sale_num]["id"]
+                total_revenue += total_income
+                report.append(
+                    f'{sell_date} | {product} | {quantity} | {total_income} | {trans_id}')
+        else:
+            report.append(f'No sale records found for date: {sell_date}')
+        report.append(f'Total Revenue: ${round(total_revenue, 2)}')
+        return report, 'sales'
+
     def get_low_stock_report(self, max_stock_amount=2):
+        '''returns a list of products that are out of stock 
+        or running low on stock'''
         report = []
         for product in self.inventory:
             prod_quantity = self.inventory[product]["quantity"]
@@ -163,6 +242,7 @@ class Supermarket():
         return report, 'low_stock'
 
     # returns a list of products costs per (1) unit
+    # delete this
     def get_costs_report(self):
         report = []
         for product in self.inventory:
@@ -171,50 +251,35 @@ class Supermarket():
                 f'Product: {product}\t | Cost: {cost}')
         return report, 'costs'
 
-    # returns a list of expired or near expiring products
-    def get_expiry_report(self):
+    def get_expiry_report(self, num_of_days=7):
+        '''returns a list of expired items or 
+        items that expire a specific set of days from now'''
         report = []
+        expired_items = 0
         for exp_date in self.expiry_dates:
-
-            # convert date into integers
-            expiry_date = exp_date.split('-')
-            expiry_year = int(expiry_date[0])
-            expiry_month = int(expiry_date[1])
-            expiry_day = int(expiry_date[2])
-            # compare expiry year to current year
-            if expiry_year < current.year:
+            # convert expiry date into date object
+            expiry_date = date.fromisoformat(exp_date)
+            max_date = current + timedelta(days=num_of_days)
+            # compare expiry date to current date
+            if expiry_date < current:  # if product already expired
                 for product in self.expiry_dates[exp_date]:
                     quantity = self.expiry_dates[exp_date][product]
                     report.append(
                         f'Product: {product} | Quantity: {quantity} | EXPIRED on {exp_date}')
-            # if expiry year same as current year
-            elif expiry_year == current.year:
-                # compare expiry month to current month
-                if expiry_month < current.month:
-                    for product in self.expiry_dates[exp_date]:
-                        quantity = self.expiry_dates[exp_date][product]
-                        report.append(
-                            f'Product: {product} | Quantity: {quantity} | EXPIRED on {exp_date}')
-                # if product expires in current month
-                elif expiry_month == current.month:
-                    for product in self.expiry_dates[exp_date]:
-                        quantity = self.expiry_dates[exp_date][product]
-                        # compare expiry day to current day
-                        if expiry_day < current.day:
-                            report.append(
-                                f'Product: {product} | Quantity: {quantity} | EXPIRED on {exp_date}')
-                        else:
-                            report.append(
-                                f'Product: {product} | Quantity: {quantity} | expires soon in {expiry_day - current.day} days')
+                    expired_items += 1
+            # if expiry date within specific amount of days
+            elif expiry_date <= max_date:
+                for product in self.expiry_dates[exp_date]:
+                    quantity = self.expiry_dates[exp_date][product]
+                    time_till_expiry = abs(expiry_date - current)
+                    report.append(
+                        f'Product: {product} | Quantity: {quantity} | expires soon in {time_till_expiry.days} days')
+        if expired_items > 0:
+            self.warn("expired_items")
         return report, 'expiry'
 
 
 class CurrentDate():
-    def __init__(self, year=2021, month=1, day=11):
-        self.year = year
-        self.month = month
-        self.day = day
-        self.date = f'{year}-{month}-{day}'
 
     def advance_time(self, num_of_days):
         # try catch value error if days is not int
@@ -234,10 +299,10 @@ class CurrentDate():
         self.month = 1
         self.day = 11
 
-# formats and prints out a report to console or to a csv file
-
 
 def print_report(report):
+    '''formats and prints out a report to console 
+    or to a csv file'''
     report_type = report[1]
     print(header_lines)
     if report_type == 'low_stock':
@@ -262,25 +327,30 @@ def print_report(report):
         print(scheidingslijn)
     elif report_type == 'purchases':
         print(scheidingslijn)
-        print('| Date | Product | Amnt | Total Cost | Transaction ID |')
+        print('| Date | Product | Amnt | Total Spent | Transaction ID |')
+        print(scheidingslijn)
+    elif report_type == 'sales':
+        print(scheidingslijn)
+        print('| Date | Product | Amnt | Total Earned | Transaction ID |')
         print(scheidingslijn)
     for line in report[0]:
         print(line)
         print(scheidingslijn)
 
 
-current = CurrentDate()
-superpy = Supermarket(my_inventory)
-
-superpy.buy(product='mango\'s', quantity=10, exp_date="2020-01-01", cost=3 )
+#superpy = Supermarket(my_inventory)
+#superpy.buy(product='mango\'s', quantity=10, exp_date="2020-01-01", cost_per_unit=3)
 # print_report(superpy.get_products_report())
 # print_report(superpy.get_costs_report())
 # print_report(superpy.get_low_stock_report(4))
 # print_report(superpy.get_expiry_report())
-superpy.buy('bananas', 2, 0.2, "2021-05-01")
-current.advance_time(2)
-superpy.buy('bananas', 7, 0.2, "2021-05-03")
-current.reverse_time(2)
-#superpy.sell('bananas', 8)
-print_report(superpy.get_purchase_report(current.date))
+#superpy.buy('bananas', 2, 0.2, "2021-05-01")
+#superpy.buy('bananas', 7, 0.2, "2021-05-03")
+# current.reverse_time(2)
+#superpy.sell('kiwi\'s', 1, 2, "2021-01-17")
+# current.advance_time(2)
+#superpy.sell(product='mango\'s', quantity=5, exp_date="2020-01-01", price_per_unit=10 )
+# print_report(superpy.get_purchase_report())
+# print_report(superpy.get_sales_report())
+#superpy.discard_items(product='bananas', exp_date="2021-05-01", quantity=2)
 # print_report(superpy.get_inventory_report())
