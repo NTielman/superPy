@@ -311,6 +311,133 @@ class Supermarket():
                 f'Product: {product}\t | Cost: {cost}')
         return report, 'costs'
 
+    def get_bestselling_days(self, year='', month=''):
+        '''returns the most profitable days (most sales) of all times
+        or most profitable days of a specific month and year'''
+        best_dates = []
+        num_of_sales = 0
+        if year == '' and month == '':
+            # return bestselling days of all time
+            # find the highest num of daily sales
+            for sales_date in self.sales:
+                day_sales = len(self.sales[sales_date])
+                if day_sales > num_of_sales:
+                    num_of_sales = day_sales
+            # find dates with this number of sales
+            for sales_date in self.sales:
+                if len(self.sales[sales_date]) == num_of_sales:
+                    best_dates.append(sales_date)
+        elif year != '' and month != '':
+            # return bestselling days of specific year and month
+            for sales_date in self.sales:
+                if f'{year}-{month}' in sales_date:
+                    day_sales = len(self.sales[sales_date])
+                    if day_sales > num_of_sales:
+                        num_of_sales = day_sales
+            for sales_date in self.sales:
+                if f'{year}-{month}' in sales_date:
+                    if len(self.sales[sales_date]) == num_of_sales:
+                        best_dates.append(sales_date)
+        elif year != '' or month != '':
+            # return bestselling days for specific year or month
+            for sales_date in self.sales:
+                sales_year = sales_date[:4]
+                sales_month = sales_date[5:7]
+                if sales_year == year or sales_month == month:
+                    day_sales = len(self.sales[sales_date])
+                    if day_sales > num_of_sales:
+                        num_of_sales = day_sales
+            for sales_date in self.sales:
+                sales_year = sales_date[:4]
+                sales_month = sales_date[5:7]
+                if sales_year == year or sales_month == month:
+                    if len(self.sales[sales_date]) == num_of_sales:
+                        best_dates.append(sales_date)
+        print(f'Date(s) with most sales are:')
+        print(", ".join(best_dates))
+        print(f'number of sales on day(s): {num_of_sales}')
+        return best_dates
+
+    def get_bestselling_products(self, year='', month=''):
+        '''returns the best selling products of all times
+        or best selling products of a specific month and year'''
+        best_products = []
+        num_of_sales = 0
+        if year == '' and month == '':
+            # return bestselling products of all time
+            products_sold = {}
+            for sales_date in self.sales:
+                # find all products sold and quantities sold
+                for sale_index in range(len(self.sales[sales_date])):
+                    product = self.sales[sales_date][sale_index]["product"]
+                    quantity = self.sales[sales_date][sale_index]["quantity"]
+                    if not (product in products_sold):
+                        products_sold[product] = quantity
+                    else:
+                        products_sold[product] += quantity
+            # find highest product quantity
+            for product in products_sold:
+                product_quantity = products_sold[product]
+                if product_quantity > num_of_sales:
+                    num_of_sales = product_quantity
+            # find products with this number of sales
+            for product in products_sold:
+                product_quantity = products_sold[product]
+                if product_quantity == num_of_sales:
+                    best_products.append(product)
+        elif year != '' and month != '':
+            # return bestselling products of specific year and month
+            products_sold = {}
+            for sales_date in self.sales:
+                if f'{year}-{month}' in sales_date:
+                    # find all products sold and quantities sold
+                    for sale_index in range(len(self.sales[sales_date])):
+                        product = self.sales[sales_date][sale_index]["product"]
+                        quantity = self.sales[sales_date][sale_index]["quantity"]
+                        if not (product in products_sold):
+                            products_sold[product] = quantity
+                        else:
+                            products_sold[product] += quantity
+            # find highest product quantity
+            for product in products_sold:
+                product_quantity = products_sold[product]
+                if product_quantity > num_of_sales:
+                    num_of_sales = product_quantity
+            # find products with this number of sales
+            for product in products_sold:
+                product_quantity = products_sold[product]
+                if product_quantity == num_of_sales:
+                    best_products.append(product)
+        elif year != '' or month != '':
+            # return bestselling products for specific year or month
+            products_sold = {}
+            for sales_date in self.sales:
+                sales_year = sales_date[:4]
+                sales_month = sales_date[5:7]
+                if sales_year == year or sales_month == month:
+                    # find all products sold and quantities sold
+                    for sale_index in range(len(self.sales[sales_date])):
+                        product = self.sales[sales_date][sale_index]["product"]
+                        quantity = self.sales[sales_date][sale_index]["quantity"]
+                        if not (product in products_sold):
+                            products_sold[product] = quantity
+                        else:
+                            products_sold[product] += quantity
+            # find highest product quantity
+            for product in products_sold:
+                product_quantity = products_sold[product]
+                if product_quantity > num_of_sales:
+                    num_of_sales = product_quantity
+            # find products with this number of sales
+            for product in products_sold:
+                product_quantity = products_sold[product]
+                if product_quantity == num_of_sales:
+                    best_products.append(product)
+        print(f'Product(s) with most sales are:')
+        print(", ".join(best_products))
+        print(f'quantity sold: {num_of_sales}')
+        return best_products
+
     def get_expiry_report(self, num_of_days=7):
         '''returns a list of expired items or 
         items that expire a specific set of days from now'''
@@ -384,16 +511,18 @@ superpy.buy('kiwi\'s', 6, 1, "2022-06-01")
 superpy.buy('bananas', 7, 0.2, "2021-05-03")
 
 superpy.sell(product='mango\'s', quantity=10,
-             purchase_id="#SUP20210114PURCH01", price_per_unit=10)
-current -= timedelta(days=2)  # current.reverse_time(2)
+             purchase_id="#SUP20210115PURCH01", price_per_unit=10)
+current -= timedelta(days=365)  # current.reverse_time(2)
 superpy.sell(product='bananas', quantity=5,
-             purchase_id="#SUP20210114PURCH04", price_per_unit=2)
+             purchase_id="#SUP20210115PURCH04", price_per_unit=2)
 superpy.sell(product='kiwi\'s', quantity=3,
-             purchase_id="#SUP20210114PURCH03", price_per_unit=5)
+             purchase_id="#SUP20210115PURCH03", price_per_unit=5)
 # print_report(superpy.get_purchase_report())
-# print_report(superpy.get_sales_report())
+print_report(superpy.get_sales_report())
 #superpy.discard_items(product='bananas', exp_date="2021-05-01", quantity=2)
 # print_report(superpy.get_inventory_report())
 # print_report(superpy.get_profit_report())
-print_report(superpy.get_expiry_report())
+# print_report(superpy.get_expiry_report())
 # print_report(superpy.get_products_report())
+# superpy.get_bestselling_days(month="01")
+superpy.get_bestselling_products(month="01", year="2020")
