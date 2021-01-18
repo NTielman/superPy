@@ -5,7 +5,7 @@ import os
 current = date.today()
 my_inventory = {
     "apples": {
-        "quantity": 2,
+        "quantity": 7,
         "expiry_date": "2020-01-01",
         "cost": 0.5,
     },
@@ -54,7 +54,7 @@ class Supermarket():
                 # add products and prod quantities to expiry date
                 self.expiry_dates[expiry_date][product] = quantity
 
-    def discard_items(self, product, exp_date, quantity=1):
+    def discard(self, product, exp_date, quantity=1):
         '''removes a specific item from inventory'''
         if quantity >= self.inventory[product]["quantity"]:
             del self.inventory[product]
@@ -173,23 +173,31 @@ class Supermarket():
     def get_inventory_report(self):
         '''returns a list of products and product quantities
         that the supermarket currently holds'''
-        report = []
+        csv_report = [['Product Name', 'Amount In Stock']]
+        terminal_report = [f'{"Product Name":<20}| Amount In Stock']
         for product in self.inventory:
-            report.append(
-                f'{product:<20}| {self.inventory[product]["quantity"]}')
-        return report, 'inventory'
+            quantity = self.inventory[product]["quantity"]
+            terminal_report.append(
+                f'{product:<20}| {quantity}')
+            csv_report.append([product, quantity])
+        return [terminal_report, 'inventory', csv_report]
 
     def get_products_report(self):
         '''returns a list of all products the supermarket offers'''
-        report = []
+        terminal_report = []
+        csv_report = []
         for product in self.inventory:
-            report.append(f'{product}')
-        return report, 'products'
+            terminal_report.append(f'{product}')
+            csv_report.append([product])
+        return [terminal_report, 'products', csv_report]
 
     def get_purchase_report(self, purchase_date='all'):
         '''returns all purchase transactions 
         or all purchases made on a specific date'''
-        report = []
+        terminal_report = [
+            f'{"Date":<11}| {"Product":<10}| {"Amnt":<8}| {"Unit Cost":<10}| {"Total":<8}| {"Exp Date":<11}| Transaction ID']
+        csv_report = [['Date', 'Product', 'Amnt', 'Unit Cost',
+                       'Total', 'Exp Date', 'Transaction ID']]
         total_cost = 0
         if purchase_date == 'all':
             for date in self.purchases:
@@ -201,8 +209,10 @@ class Supermarket():
                     expiry_date = self.purchases[date][purchase_num]["expiry_date"]
                     trans_id = self.purchases[date][purchase_num]["id"]
                     total_cost += total_spent
-                    report.append(
+                    terminal_report.append(
                         f'{date:<11}| {product:<10}| {quantity:<8}| {unit_cost:<10}| {total_spent:<8}| {expiry_date:<11}| {trans_id}')
+                    csv_report.append(
+                        [date, product, quantity, unit_cost, total_spent, expiry_date, trans_id])
         elif purchase_date in self.purchases:
             for purchase_num in range(len(self.purchases[purchase_date])):
                 product = self.purchases[purchase_date][purchase_num]["product"]
@@ -212,18 +222,26 @@ class Supermarket():
                 expiry_date = self.purchases[purchase_date][purchase_num]["expiry_date"]
                 trans_id = self.purchases[purchase_date][purchase_num]["id"]
                 total_cost += total_spent
-                report.append(
+                terminal_report.append(
                     f'{purchase_date:<11}| {product:<10}| {quantity:<8}| {unit_cost:<10}| {total_spent:<10}| {expiry_date:<10}| {trans_id}')
+                csv_report.append(
+                    [purchase_date, product, quantity, unit_cost, total_spent, expiry_date, trans_id])
         else:
-            report.append(
+            terminal_report.append(
                 f'No purchase records found for date: {purchase_date}')
-        report.append(f'Total Cost: ${round(total_cost, 2)}')
-        return report, 'purchases'
+            csv_report.append(
+                [f'No purchase records found for date: {purchase_date}'])
+        terminal_report.append(f'Total Cost: ${round(total_cost, 2)}')
+        csv_report.append([f'Total Cost: ${round(total_cost, 2)}'])
+        return [terminal_report, 'purchases', csv_report, purchase_date]
 
     def get_sales_report(self, sell_date='all'):
         '''returns all sales transactions 
         or all sales made on a specific date'''
-        report = []
+        terminal_report = [
+            f'{"Date":<11}| {"Product":<15}| {"Amnt":<10}| {"Unit Price":<13}| {"Total":<10}| Transaction ID']
+        csv_report = [['Date', 'Product', 'Amnt',
+                       'Unit Price', 'Total', 'Transaction ID']]
         total_revenue = 0
         if sell_date == 'all':
             for date in self.sales:
@@ -234,8 +252,10 @@ class Supermarket():
                     total_income = self.sales[date][sale_num]["total_income"]
                     trans_id = self.sales[date][sale_num]["id"]
                     total_revenue += total_income
-                    report.append(
+                    terminal_report.append(
                         f'{date:<11}| {product:<15}| {quantity:<10}| {unit_price:<13}| {total_income:<10}| {trans_id}')
+                    csv_report.append(
+                        [date, product, quantity, unit_price, total_income, trans_id])
         elif sell_date in self.sales:
             for sale_num in range(len(self.sales[sell_date])):
                 product = self.sales[sell_date][sale_num]["product"]
@@ -244,19 +264,29 @@ class Supermarket():
                 total_income = self.sales[sell_date][sale_num]["total_income"]
                 trans_id = self.sales[sell_date][sale_num]["id"]
                 total_revenue += total_income
-                report.append(
+                terminal_report.append(
                     f'{sell_date:<11}| {product:<15}| {quantity:<10}| {unit_price:<13}| {total_income:<10}| {trans_id}')
+                csv_report.append(
+                    [sell_date, product, quantity, unit_price, total_income, trans_id])
         else:
-            report.append(f'No sale records found for date: {sell_date}')
-        report.append(f'Total Revenue: ${round(total_revenue, 2)}')
-        return report, 'sales'
+            terminal_report.append(
+                f'No sale records found for date: {sell_date}')
+            csv_report.append([f'No sale records found for date: {sell_date}'])
+        terminal_report.append(f'Total Revenue: ${round(total_revenue, 2)}')
+        csv_report.append([f'Total Revenue: ${round(total_revenue, 2)}'])
+        return [terminal_report, 'sales', csv_report, sell_date]
 
     def get_profit_report(self, profit_date="all"):
         '''returns total profit made over time 
         or profit made on a specific date'''
-        report = []
+        terminal_report = []
+        csv_report = []
         total_profit = 0
         if profit_date == 'all':
+            terminal_report.append(
+                f'{"Date":<11}| {"Total Cost":<15}| {"Total Revenue":<15}| Total Profit')
+            csv_report.append(
+                ['Date', 'Total Cost', 'Total Revenue', 'Total Profit'])
             for date in self.sales:
                 day_profit = 0
                 day_revenue = 0
@@ -271,9 +301,14 @@ class Supermarket():
                     day_revenue += product_revenue
                     day_profit += product_profit
                 total_profit += day_profit
-                report.append(
-                    f'{date:<11}| {"":<20}| {day_cost:<15}| {day_revenue:<15}| {day_profit}')
+                terminal_report.append(
+                    f'{date:<11}| {day_cost:<15}| {day_revenue:<15}| {day_profit}')
+                csv_report.append([date, day_cost, day_revenue, day_profit])
         elif profit_date in self.sales:
+            terminal_report.append(
+                f'{"Date":<11}| {"Amnt x Product":<20}| {"Total Cost":<15}| {"Total Revenue":<15}| Total Profit')
+            csv_report.append(
+                ['Date', 'Amnt x Product', 'Total Cost', 'Total Revenue', 'Total Profit'])
             for sale_num in range(len(self.sales[profit_date])):
                 product = self.sales[profit_date][sale_num]["product"]
                 quantity = self.sales[profit_date][sale_num]["quantity"]
@@ -282,32 +317,43 @@ class Supermarket():
                 product_revenue = self.sales[profit_date][sale_num]["total_income"]
                 product_profit = product_revenue - product_cost
                 total_profit += product_profit
-                report.append(
+                terminal_report.append(
                     f'{profit_date:<11}| {str(quantity) + " x " + product:<20}| {product_cost:<15}| {product_revenue:<15}| {product_profit}')
+                csv_report.append(
+                    [profit_date, f'{quantity} x {product}', product_cost, product_revenue, product_profit])
         else:
-            report.append(f'No sale records found for date: {profit_date}')
-        report.append(f'Total Profit: ${round(total_profit, 2)}')
-        return report, 'profit'
+            terminal_report.append(
+                f'No sale records found for date: {profit_date}')
+            csv_report.append(
+                [f'No sale records found for date: {profit_date}'])
+        terminal_report.append(f'Total Profit: ${round(total_profit, 2)}')
+        csv_report.append([f'Total Profit: ${round(total_profit, 2)}'])
+        return [terminal_report, 'profit', csv_report, profit_date]
 
     def get_low_stock_report(self, max_stock_amount=2):
         '''returns a list of products that are out of stock 
         or running low on stock'''
-        report = []
+        terminal_report = [f'{"Product":<20}| Quantity']
+        csv_report = [["Product", "Quantity"]]
         for product in self.inventory:
             prod_quantity = self.inventory[product]["quantity"]
             # if products remaining is less than max stock amount
             if prod_quantity == 0:
-                report.append(
-                    f'Product: {product} OUT OF STOCK')
+                terminal_report.append(
+                    f'{product:<20}| OUT OF STOCK')
+                csv_report.append([product, 'OUT OF STOCK'])
             elif prod_quantity <= max_stock_amount:
-                report.append(
-                    f'Product: {product:<20}| Quantity: {prod_quantity}')
-        return report, 'low stock'
+                terminal_report.append(
+                    f'{product:<20}| {prod_quantity}')
+                csv_report.append([product, prod_quantity])
+        return [terminal_report, 'low stock', csv_report]
 
     def get_expiry_report(self, num_of_days=7):
         '''returns a list of expired items or 
         items that expire a specific set of days from now'''
-        report = []
+        terminal_report = [
+            f'{"Product":<15}| {"Quantity":<10}| Expiration Date']
+        csv_report = [["Product", "Quantity", "Expires in ..."]]
         expired_items = 0
         for exp_date in self.expiry_dates:
             # convert expiry date into date object
@@ -317,24 +363,29 @@ class Supermarket():
             if expiry_date < current:
                 for product in self.expiry_dates[exp_date]:
                     quantity = self.expiry_dates[exp_date][product]
-                    report.append(
-                        f'Product: {product:<15}| Quantity: {quantity:<10}| EXPIRED on {exp_date}')
+                    terminal_report.append(
+                        f'{product:<15}| {quantity:<10}| EXPIRED on {exp_date}')
+                    csv_report.append(
+                        [product, quantity, f'EXPIRED on {exp_date}'])
                     expired_items += 1
             # if expiry date within specific amount of days
             elif expiry_date <= max_date:
                 for product in self.expiry_dates[exp_date]:
                     quantity = self.expiry_dates[exp_date][product]
                     time_till_expiry = abs(expiry_date - current)
-                    report.append(
-                        f'Product: {product:<15}| Quantity: {quantity:<10}| expires soon in {time_till_expiry.days} days')
+                    terminal_report.append(
+                        f'{product:<15}| {quantity:<10}| {time_till_expiry.days} days')
+                    csv_report.append(
+                        [product, quantity, f'{time_till_expiry.days} days'])
         if expired_items > 0:
             self.warn("expired_items")
-        return report, 'expiry'
+        return [terminal_report, 'expiry', csv_report]
 
     def get_bestselling_days(self, year='', month=''):
         '''returns days with most sales transactions of all times
         or days with most sales transactions of a specific month and year '''
-        report = []
+        terminal_report = []
+        csv_report = []
         num_of_sales = 0
         if year == '' and month == '':
             # return bestselling days of all time
@@ -346,7 +397,8 @@ class Supermarket():
             # find dates with this number of sales
             for sales_date in self.sales:
                 if len(self.sales[sales_date]) == num_of_sales:
-                    report.append(sales_date)
+                    terminal_report.append(sales_date)
+                    csv_report.append([sales_date])
         elif year != '' and month != '':
             # return bestselling days of specific year and month
             for sales_date in self.sales:
@@ -357,7 +409,8 @@ class Supermarket():
             for sales_date in self.sales:
                 if f'{year}-{month}' in sales_date:
                     if len(self.sales[sales_date]) == num_of_sales:
-                        report.append(sales_date)
+                        terminal_report.append(sales_date)
+                        csv_report.append([sales_date])
         elif year != '' or month != '':
             # return bestselling days for specific year or month
             for sales_date in self.sales:
@@ -372,14 +425,21 @@ class Supermarket():
                 sales_month = sales_date[5:7]
                 if sales_year == year or sales_month == month:
                     if len(self.sales[sales_date]) == num_of_sales:
-                        report.append(sales_date)
-        report.append(f'Total transactions made per day: {num_of_sales}')
-        return report, 'best-selling days'
+                        terminal_report.append(sales_date)
+                        csv_report.append([sales_date])
+        terminal_report.append(
+            f'Total transactions made per day: {num_of_sales}')
+        csv_report.append([f'Total transactions made per day: {num_of_sales}'])
+        if month:
+            month_num = int(month)
+            month = date(1900, month_num, 1).strftime('%B')
+        return [terminal_report, 'best-selling days', csv_report, f'{year}{month}']
 
     def get_bestselling_products(self, year='', month=''):
         '''returns the best selling products of all times
         or best selling products of a specific month and year'''
-        report = []
+        terminal_report = []
+        csv_report = []
         num_of_sales = 0
         products_sold = {}
         if year == '' and month == '':
@@ -428,25 +488,22 @@ class Supermarket():
         for product in products_sold:
             product_quantity = products_sold[product]
             if product_quantity == num_of_sales:
-                report.append(product)
-        report.append(f'Total amount of product(s) sold: {num_of_sales}')
-        return report, 'best-selling products'
+                terminal_report.append(product)
+                csv_report.append([product])
+        terminal_report.append(
+            f'Total amount of product(s) sold: {num_of_sales}')
+        csv_report.append([f'Total amount of product(s) sold: {num_of_sales}'])
+        if month:
+            month_num = int(month)
+            month = date(1900, month_num, 1).strftime('%B')
+        return [terminal_report, 'best-selling products', csv_report, f'{year}{month}']
 
-def console_report():
-    '''formats report for printing to console'''
-    return None
-#both called by print report function
-def csv_report():
-    '''formats report for writing to csv file'''
-    return None
 
-def print_report(report):
-    '''formats and prints out a report to console 
-    or to a csv file '''
+def create_terminal_report(report_type, report):
+    '''formats and prints report to terminal'''
     line_length = 90
     header_lines = '#' * line_length
     division_line = '_' * line_length
-    report_type = report[1]
 
     # print report title and header
     print('\n')
@@ -454,47 +511,76 @@ def print_report(report):
     print(f'{report_type.upper() + " REPORT":^90}')
     print(header_lines)
 
-    # print subheader info for specific types of report
-    if report_type == 'inventory':
-        print(f'{"Product Name":<20}| Amount In Stock')
-        print(division_line)
-    elif report_type == 'purchases':
-        print(f'{"Date":<11}| {"Product":<10}| {"Amnt":<8}| {"Unit Cost":<10}| {"Total":<8}| {"Exp Date":<11}| Transaction ID')
-        print(division_line)
-    elif report_type == 'sales':
-        print(f'{"Date":<11}| {"Product":<15}| {"Amnt":<10}| {"Unit Price":<13}| {"Total":<10}| Transaction ID')
-        print(division_line)
-    elif report_type == 'profit':
-        print(f'{"Date":<11}| {"Amnt x Product":<20}| {"Total Cost":<15}| {"Total Revenue":<15}| Total Profit')
-        print(division_line)
-
     # print report body
-    for line in report[0]:
+    for line in report:
         print(line)
         print(division_line)
 
 
+def create_reports_dir():
+    '''creates a reports folder in current directory'''
+    dir_name = 'reports'
+    full_path = os.path.realpath(__file__)
+    file_dir = os.path.dirname(full_path)
+    dir_path = os.path.join(file_dir, dir_name)
+
+    try:
+        if not os.path.isdir(dir_path):
+            os.makedirs(dir_path)
+        return dir_path
+    except OSError:
+        print(f'Error: Creating folder "{dir_name}"')
+
+
+def create_csv_report(report_type, report, report_date):
+    '''formats and creates a csv report 
+    inside reports directory'''
+    dir_path = create_reports_dir()
+    file_name = f'{report_type}-{report_date}.csv'
+    file_path = os.path.join(dir_path, file_name)
+
+    print(file_path)
+    with open(file_path, 'w', newline='') as report_file:
+        csv_writer = csv.writer(report_file)
+        csv_writer.writerows(report)
+
+
+def print_report(report):
+    '''prints a report to terminal
+    and csv file '''
+    terminal_report = report[0]
+    csv_report = report[2]
+    report_type = report[1]
+    report_date = current.isoformat()
+
+    if len(report) > 3:
+        if (report[3] != 'all') and (report[3] != ''):
+            report_date = report[3]
+
+    create_terminal_report(report_type, terminal_report)
+    create_csv_report(report_type, csv_report, report_date)
+
+
 superpy = Supermarket(my_inventory)
-superpy.buy(product='mango\'s', quantity=10,
+superpy.buy(product='mango\'s', quantity=16,
             exp_date="2020-01-01", cost_per_unit=3)
 # print_report(superpy.get_low_stock_report(4))
 superpy.buy('bananas', 2, 0.2, "2021-05-01")
 superpy.buy('kiwi\'s', 6, 1, "2022-06-01")
 # current += timedelta(days=2) #def advance_time(num_days)
 superpy.buy('bananas', 7, 0.2, "2021-05-03")
-
 superpy.sell(product='mango\'s', quantity=10,
-             purchase_id="#SUP210116PURCH01", price_per_unit=10)
+             purchase_id="#SUP210118PURCH01", price_per_unit=10)
 # current -= timedelta(days=365)  # current.reverse_time(2)
 superpy.sell(product='bananas', quantity=5,
-             purchase_id="#SUP210116PURCH04", price_per_unit=2)
+             purchase_id="#SUP210118PURCH04", price_per_unit=2)
 superpy.sell(product='kiwi\'s', quantity=3,
-             purchase_id="#SUP210116PURCH03", price_per_unit=5)
+             purchase_id="#SUP210118PURCH03", price_per_unit=5)
 print_report(superpy.get_purchase_report())
 # print_report(superpy.get_sales_report())
-#superpy.discard_items(product='bananas', exp_date="2021-05-01", quantity=2)
+#superpy.discard(product='bananas', exp_date="2021-05-01", quantity=2)
 # print_report(superpy.get_inventory_report())
-# print_report(superpy.get_profit_report(profit_date="2021-01-16"))
+# print_report(superpy.get_profit_report(profit_date="2021-01-18"))
 # print_report(superpy.get_expiry_report())
 # print_report(superpy.get_products_report())
 # print_report(superpy.get_bestselling_days(month="01"))
