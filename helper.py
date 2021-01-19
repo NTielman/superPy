@@ -38,10 +38,10 @@ class Supermarket():
 
     def discard(self, product, exp_date, quantity=1):
         '''removes a specific item from inventory'''
-        if quantity >= self.inventory[product]["quantity"]:
+        if quantity >= self.inventory[product]:
             del self.inventory[product]
         else:
-            self.inventory[product]["quantity"] -= quantity
+            self.inventory[product] -= quantity
         # remove items from expiry dates
         if quantity >= self.expiry_dates[exp_date][product]:
             del self.expiry_dates[exp_date][product]
@@ -52,15 +52,10 @@ class Supermarket():
         '''adds a product to inventory and
         adds product info to purchase records'''
         if product in self.inventory:
-            self.inventory[product]["quantity"] += quantity
+            self.inventory[product] += quantity
         else:
-            prod_info = {
-                "quantity": quantity,
-                "expiry_date": exp_date,
-                "cost": cost_per_unit,
-            }
             # add product to inventory
-            self.inventory[product] = prod_info
+            self.inventory[product] = quantity
         # if exp_date not yet in expiry dates
         if not (exp_date in self.expiry_dates):
             # create a dict
@@ -97,7 +92,7 @@ class Supermarket():
         adds product info to sales records'''
         if not (product in self.inventory):
             return f"product: {product} not in stock"
-        if quantity > self.inventory[product]["quantity"]:
+        if quantity > self.inventory[product]:
             return "not enough in stock to complete transaction"
         # extract product info from purchase id
         id_date = datetime.strptime(purchase_id[4:10], "%y%m%d")
@@ -111,7 +106,7 @@ class Supermarket():
             # ensure items of differing expiration dates are entered seperately
             return "incorrect quantity or purchase ID provided"
         # reduce product inventory quantities
-        self.inventory[product]["quantity"] -= quantity
+        self.inventory[product] -= quantity
         # remove products and prod quantities from expiry date
         if quantity >= self.expiry_dates[exp_date][product]:
             del self.expiry_dates[exp_date][product]
@@ -133,7 +128,7 @@ class Supermarket():
             "id": transaction_id
         }
         self.sales[current_date].append(sale_info)
-        products_left = self.inventory[product]["quantity"]
+        products_left = self.inventory[product]
         if products_left == 0:
             del self.inventory[product]
         elif products_left <= 5:
@@ -161,7 +156,7 @@ class Supermarket():
         csv_report = [['Product Name', 'Amount In Stock']]
         terminal_report = [f'{"Product Name":<20}| Amount In Stock']
         for product in self.inventory:
-            quantity = self.inventory[product]["quantity"]
+            quantity = self.inventory[product]
             terminal_report.append(
                 f'{product:<20}| {quantity}')
             csv_report.append([product, quantity])
@@ -321,7 +316,7 @@ class Supermarket():
         terminal_report = [f'{"Product":<20}| Quantity']
         csv_report = [["Product", "Quantity"]]
         for product in self.inventory:
-            prod_quantity = self.inventory[product]["quantity"]
+            prod_quantity = self.inventory[product]
             # if products remaining is less than max stock amount
             if prod_quantity == 0:
                 terminal_report.append(
@@ -547,25 +542,26 @@ def print_report(report):
 
 
 superpy = Supermarket()
-# superpy.buy(product='mango\'s', quantity=16, exp_date="2020-01-01", cost_per_unit=3)
+superpy.buy(product='mango\'s', quantity=16,
+            exp_date="2020-01-01", cost_per_unit=3)
 # print_report(superpy.get_low_stock_report(4))
-# superpy.buy('bananas', 2, 0.2, "2021-05-01")
-# superpy.buy('kiwi\'s', 6, 1, "2022-06-01")
+superpy.buy('bananas', 2, 0.2, "2021-05-01")
+superpy.buy('kiwi\'s', 6, 1, "2022-06-01")
 # current += timedelta(days=2) #def advance_time(num_days)
-# superpy.buy('bananas', 7, 0.2, "2021-05-03")
-# superpy.sell(product='mango\'s', quantity=10,
-#              purchase_id="#SUP210118PURCH01", price_per_unit=10)
+superpy.buy('bananas', 7, 0.2, "2021-05-03")
+superpy.sell(product='mango\'s', quantity=10,
+             purchase_id="#SUP210119PURCH01", price_per_unit=10)
 # current -= timedelta(days=365)  # current.reverse_time(2)
-# superpy.sell(product='bananas', quantity=5,
-#              purchase_id="#SUP210118PURCH04", price_per_unit=2)
-# superpy.sell(product='kiwi\'s', quantity=3,
-#              purchase_id="#SUP210118PURCH03", price_per_unit=5)
-print_report(superpy.get_purchase_report())
+superpy.sell(product='bananas', quantity=5,
+             purchase_id="#SUP210119PURCH04", price_per_unit=2)
+superpy.sell(product='kiwi\'s', quantity=3,
+             purchase_id="#SUP210119PURCH03", price_per_unit=5)
+# print_report(superpy.get_purchase_report('2021-01-19'))
 # print_report(superpy.get_sales_report())
-#superpy.discard(product='bananas', exp_date="2021-05-01", quantity=2)
+# superpy.discard(product='bananas', exp_date="2021-05-01", quantity=2)
 # print_report(superpy.get_inventory_report())
-# print_report(superpy.get_profit_report(profit_date="2021-01-18"))
+# print_report(superpy.get_profit_report(profit_date="2021-01-19"))
 # print_report(superpy.get_expiry_report())
 # print_report(superpy.get_products_report())
-# print_report(superpy.get_bestselling_days(month="01"))
+# print_report(superpy.get_bestselling_days(year="2021"))
 # print_report(superpy.get_bestselling_products())
