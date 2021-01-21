@@ -1,7 +1,10 @@
 from datetime import date, timedelta, datetime
+import matplotlib.pyplot as plt
+import numpy as np
 import csv
 import os
 
+plt.style.use('dark_background')
 current = date.today()
 
 
@@ -256,7 +259,7 @@ class Supermarket():
         csv_report.append([f'Total Revenue: ${round(total_revenue, 2)}'])
         return [terminal_report, 'sales', csv_report, sell_date]
 
-    def get_profit_report(self, profit_date="all"):
+    def get_profit_report(self, profit_date='all'):
         '''returns total profit made over time 
         or profit made on a specific date'''
         terminal_report = []
@@ -362,7 +365,7 @@ class Supermarket():
         return [terminal_report, 'expiry', csv_report]
 
     def get_bestselling_days(self, year='', month=''):
-        '''returns days with most sales transactions of all times
+        '''returns days with most sales transactions (most products sold) of all times
         or days with most sales transactions of a specific month and year '''
         terminal_report = []
         csv_report = []
@@ -541,21 +544,92 @@ def print_report(report):
     create_csv_report(report_type, csv_report, report_date)
 
 
+def plot_report(report):
+    '''visualizes report data 
+    in a line, bar or pie chart '''
+    plotable_reports = ['inventory', 'profit']
+    report_type = report[1]
+    if not (report_type in plotable_reports):
+        return f'Error: {report_type} report is not plotable'
+    elif (report_type == 'profit') and (report[3] != 'all'):
+        return 'Please leave date field empty'
+
+    report_data = report[2]
+    headers = report_data.pop(0)
+    x_axis = []
+    y_axis = []
+    alt_y_axis = []
+    alt_alt_y_axis = []
+
+    plt.figure(num=f'{report_type}')
+    if report_type == 'inventory':
+        for row in report_data:
+            product = row[0]
+            quantity = row[1]
+            y_axis.append(quantity)
+            x_axis.append(product)
+        # bar chart
+        plt.subplot(121)
+        plt.bar(x_axis, y_axis)
+        plt.xticks(rotation=90)
+        plt.ylabel('quantity')
+        # pie chart
+        plt.subplot(122)
+        plt.pie(y_axis, labels=x_axis, autopct='%1.1f%%')
+        plt.legend(bbox_to_anchor=(1, 1), loc='lower left', title='product')
+    else:
+        footer = report_data.pop()
+        for row in report_data:
+            trans_date = row[0]
+            costs = row[1]
+            revenue = row[2]
+            profit = row[3]
+            y_axis.append(costs)
+            alt_y_axis.append(revenue)
+            alt_alt_y_axis.append(profit)
+            x_axis.append(trans_date)
+        # plot
+        plt.subplot(121)
+        plt.plot(x_axis, y_axis, label='cost', marker='_', markersize=10)
+        plt.plot(x_axis, alt_y_axis, label='revenue', marker='+', markersize=10)
+        plt.plot(x_axis, alt_alt_y_axis, label='profit', linestyle='-.')
+        plt.ylabel('amount in $')
+        plt.xticks(rotation=45)
+        # bar
+        x = np.arange(len(x_axis))
+        ax = plt.subplot(122)
+        bar_width = 0.2  # the width of the bars
+        ax.bar(x - bar_width, y_axis, label='cost', width=bar_width)
+        ax.bar(x, alt_y_axis, label='revenue', width=bar_width)
+        ax.bar(x + bar_width, alt_alt_y_axis, label='profit', width=bar_width)
+        ax.set_xticks(x)
+        ax.set_xticklabels(x_axis)
+        ax.set_ylabel('amount in $')
+        plt.xticks(rotation=45)
+        plt.legend()
+    plt.tight_layout(pad=0.4)
+    plt.show()
+
 superpy = Supermarket()
+# plot_report(superpy.get_inventory_report())
+
+
 superpy.buy(product='mango\'s', quantity=16,
             exp_date="2020-01-01", cost_per_unit=3)
 # print_report(superpy.get_low_stock_report(4))
 superpy.buy('bananas', 2, 0.2, "2021-05-01")
 superpy.buy('kiwi\'s', 6, 1, "2022-06-01")
-# current += timedelta(days=2) #def advance_time(num_days)
 superpy.buy('bananas', 7, 0.2, "2021-05-03")
 superpy.sell(product='mango\'s', quantity=10,
-             purchase_id="#SUP210119PURCH01", price_per_unit=10)
-# current -= timedelta(days=365)  # current.reverse_time(2)
+             purchase_id="#SUP210121PURCH01", price_per_unit=10)
+# current -= timedelta(days=2)  # current.reverse_time(2)
+current += timedelta(days=2) #def advance_time(num_days)
 superpy.sell(product='bananas', quantity=5,
-             purchase_id="#SUP210119PURCH04", price_per_unit=2)
+             purchase_id="#SUP210121PURCH04", price_per_unit=2)
+superpy.sell(product='bananas', quantity=2,
+             purchase_id="#SUP210121PURCH04", price_per_unit=3)
 superpy.sell(product='kiwi\'s', quantity=3,
-             purchase_id="#SUP210119PURCH03", price_per_unit=5)
+             purchase_id="#SUP210121PURCH03", price_per_unit=5)
 # print_report(superpy.get_purchase_report('2021-01-19'))
 # print_report(superpy.get_sales_report())
 # superpy.discard(product='bananas', exp_date="2021-05-01", quantity=2)
@@ -565,3 +639,6 @@ superpy.sell(product='kiwi\'s', quantity=3,
 # print_report(superpy.get_products_report())
 # print_report(superpy.get_bestselling_days(year="2021"))
 # print_report(superpy.get_bestselling_products())
+
+plot_report(superpy.get_inventory_report())
+# plot_report(superpy.get_profit_report())
