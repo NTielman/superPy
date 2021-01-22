@@ -1,12 +1,6 @@
 from datetime import date, timedelta, datetime
-import matplotlib.pyplot as plt
-import numpy as np
 import csv
 import os
-
-plt.style.use('dark_background')
-current = date.today()
-
 
 class Supermarket():
     purchases = {}
@@ -40,7 +34,8 @@ class Supermarket():
                              exp_date, purchase_date)
 
     def discard(self, product, exp_date, quantity=1):
-        '''removes a specific item from inventory'''
+        '''removes item(s) from inventory (bijv, if item is: defect, expired)
+        and adds to loss records'''
         if quantity >= self.inventory[product]:
             del self.inventory[product]
         else:
@@ -51,7 +46,7 @@ class Supermarket():
         else:
             self.expiry_dates[exp_date][product] -= quantity
 
-    def buy(self, product, quantity, cost_per_unit, exp_date, purchase_date=''):
+    def buy(self, product, quantity, cost_per_unit, exp_date, purchase_date):
         '''adds a product to inventory and
         adds product info to purchase records'''
         if product in self.inventory:
@@ -70,8 +65,8 @@ class Supermarket():
         else:
             self.expiry_dates[exp_date][product] += quantity
         # if purchase date is empty, set current date as purch date
-        if not purchase_date:
-            purchase_date = current.isoformat()
+        # if not purchase_date:
+        #     purchase_date = current.isoformat()
         # if purchase date not yet in purchases
         if not (purchase_date in self.purchases):
             # create a transaction (purchases) list
@@ -90,7 +85,7 @@ class Supermarket():
         self.purchases[purchase_date].append(purchase_info)
         return f'items added to inventory. Transaction ID: {transaction_id}'
 
-    def sell(self, product, quantity, price_per_unit, purchase_id):
+    def sell(self, product, quantity, price_per_unit, purchase_id, sell_date):
         '''removes a product from inventory and
         adds product info to sales records'''
         if not (product in self.inventory):
@@ -116,12 +111,13 @@ class Supermarket():
         else:
             self.expiry_dates[exp_date][product] -= quantity
         # if transaction date not yet in sales
-        current_date = current.isoformat()
-        if not (current_date in self.sales):
+        # current_date = current.isoformat()
+        if not (sell_date in self.sales):
             # create a transaction (sales) list
-            self.sales[current_date] = []
+            self.sales[sell_date] = []
         # add sale info to transaction date
-        transaction_id = f'#SUP{current.strftime("%y%m%d")}SALE0{len(self.sales[current_date]) + 1}'
+        trans_date = date.fromisoformat(sell_date)
+        transaction_id = f'#SUP{trans_date.strftime("%y%m%d")}SALE0{len(self.sales[sell_date]) + 1}'
         sale_info = {
             "product": product,
             "quantity": quantity,
@@ -130,7 +126,7 @@ class Supermarket():
             "total_income": round((price_per_unit*quantity), 2),
             "id": transaction_id
         }
-        self.sales[current_date].append(sale_info)
+        self.sales[sell_date].append(sale_info)
         products_left = self.inventory[product]
         if products_left == 0:
             del self.inventory[product]
@@ -138,6 +134,7 @@ class Supermarket():
             self.warn("low_stock")
 
     def warn(self, message):
+        #set timeout function 2/ 3 seconds so iot prints warning after report?
         if message == "low_stock":
             print("Warning: some items are low on stock")
             answer = input(
@@ -173,6 +170,11 @@ class Supermarket():
             terminal_report.append(f'{product}')
             csv_report.append([product])
         return [terminal_report, 'products', csv_report]
+
+#date (2021-01-13) if len date == 10 print report for specific day
+#date (2021-01) if len date == 7 print report for every day in specific month
+##date (2021) if len date == 4 print report for every (month) in specific year
+
 
     def get_purchase_report(self, purchase_date='all'):
         '''returns all purchase transactions 
@@ -331,19 +333,20 @@ class Supermarket():
                 csv_report.append([product, prod_quantity])
         return [terminal_report, 'low stock', csv_report]
 
-    def get_expiry_report(self, num_of_days=7):
+    def get_expiry_report(self, current_day, num_of_days=7):
         '''returns a list of expired items or 
         items that expire a specific set of days from now'''
         terminal_report = [
-            f'{"Product":<15}| {"Quantity":<10}| Expiration Date']
-        csv_report = [["Product", "Quantity", "Expires in ..."]]
+            f'{"Product":<15}| {"Quantity":<10}| Days till expiry']
+        csv_report = [["Product", "Quantity", "Days till expiry"]]
         expired_items = 0
         for exp_date in self.expiry_dates:
             # convert expiry date into date object
             expiry_date = date.fromisoformat(exp_date)
-            max_date = current + timedelta(days=num_of_days)
+            current_date = date.fromisoformat(current_day)
+            max_date = current_date + timedelta(days=num_of_days)
             # if product already expired
-            if expiry_date < current:
+            if expiry_date < current_date:
                 for product in self.expiry_dates[exp_date]:
                     quantity = self.expiry_dates[exp_date][product]
                     terminal_report.append(
@@ -355,7 +358,7 @@ class Supermarket():
             elif expiry_date <= max_date:
                 for product in self.expiry_dates[exp_date]:
                     quantity = self.expiry_dates[exp_date][product]
-                    time_till_expiry = abs(expiry_date - current)
+                    time_till_expiry = abs(expiry_date - current_date)
                     terminal_report.append(
                         f'{product:<15}| {quantity:<10}| {time_till_expiry.days} days')
                     csv_report.append(
@@ -364,13 +367,15 @@ class Supermarket():
             self.warn("expired_items")
         return [terminal_report, 'expiry', csv_report]
 
-    def get_bestselling_days(self, year='', month=''):
+    def get_bestselling_days(self, year=False, month=False):
         '''returns days with most sales transactions (most products sold) of all times
         or days with most sales transactions of a specific month and year '''
+        #change month/ year to date='all'. if date == (yyyy-mm) best day of month report, if date == (yyyy) best day of year report
+        #if date (yyyy-mm-dd) print cannot get bestselling day for specific date only for month or year or all time
         terminal_report = []
         csv_report = []
         num_of_sales = 0
-        if year == '' and month == '':
+        if (not year) and (not month):
             # return bestselling days of all time
             # find the highest num of daily sales
             for sales_date in self.sales:
@@ -382,7 +387,7 @@ class Supermarket():
                 if len(self.sales[sales_date]) == num_of_sales:
                     terminal_report.append(sales_date)
                     csv_report.append([sales_date])
-        elif year != '' and month != '':
+        elif year and month:
             # return bestselling days of specific year and month
             for sales_date in self.sales:
                 if f'{year}-{month}' in sales_date:
@@ -394,7 +399,7 @@ class Supermarket():
                     if len(self.sales[sales_date]) == num_of_sales:
                         terminal_report.append(sales_date)
                         csv_report.append([sales_date])
-        elif year != '' or month != '':
+        elif year or month:
             # return bestselling days for specific year or month
             for sales_date in self.sales:
                 sales_year = sales_date[:4]
@@ -416,16 +421,19 @@ class Supermarket():
         if month:
             month_num = int(month)
             month = date(1900, month_num, 1).strftime('%B')
+        #change returned val di year month. {false}{false}
         return [terminal_report, 'best-selling days', csv_report, f'{year}{month}']
 
-    def get_bestselling_products(self, year='', month=''):
+    def get_bestselling_products(self, year=False, month=False):
         '''returns the best selling products of all times
-        or best selling products of a specific month and year'''
+        or best selling products of a specific month and year '''
+         #change month/ year to date='all'. if date (yyyy-mm-dd) best prod(s) of day
+         # if date == (yyyy-mm) best products of month, if date == (yyyy) best prod of year
         terminal_report = []
         csv_report = []
         num_of_sales = 0
         products_sold = {}
-        if year == '' and month == '':
+        if (not year) and (not month):
             # return bestselling products of all time
             for sales_date in self.sales:
                 # find all products sold and quantities sold
@@ -436,7 +444,7 @@ class Supermarket():
                         products_sold[product] = quantity
                     else:
                         products_sold[product] += quantity
-        elif year != '' and month != '':
+        elif year and month:
             # return bestselling products of specific year and month
             for sales_date in self.sales:
                 if f'{year}-{month}' in sales_date:
@@ -448,7 +456,7 @@ class Supermarket():
                             products_sold[product] = quantity
                         else:
                             products_sold[product] += quantity
-        elif year != '' or month != '':
+        elif year or month:
             # return bestselling products for specific year or month
             for sales_date in self.sales:
                 sales_year = sales_date[:4]
@@ -479,157 +487,24 @@ class Supermarket():
         if month:
             month_num = int(month)
             month = date(1900, month_num, 1).strftime('%B')
+            #change returned val di year month. {false}{false}
         return [terminal_report, 'best-selling products', csv_report, f'{year}{month}']
 
-
-def create_terminal_report(report_type, report):
-    '''formats and prints report to terminal'''
-    line_length = 90
-    header_lines = '#' * line_length
-    division_line = '_' * line_length
-
-    # print report title and header
-    print('\n')
-    print(header_lines)
-    print(f'{report_type.upper() + " REPORT":^90}')
-    print(header_lines)
-
-    # print report body
-    for line in report:
-        print(line)
-        print(division_line)
-
-
-def create_reports_dir():
-    '''creates a reports folder in current directory'''
-    dir_name = 'reports'
-    full_path = os.path.realpath(__file__)
-    file_dir = os.path.dirname(full_path)
-    dir_path = os.path.join(file_dir, dir_name)
-
-    try:
-        if not os.path.isdir(dir_path):
-            os.makedirs(dir_path)
-        return dir_path
-    except OSError:
-        print(f'Error: Creating folder "{dir_name}"')
-
-
-def create_csv_report(report_type, report, report_date):
-    '''formats and creates a csv report 
-    inside reports directory'''
-    dir_path = create_reports_dir()
-    file_name = f'{report_type}-{report_date}.csv'
-    file_path = os.path.join(dir_path, file_name)
-
-    print(file_path)
-    with open(file_path, 'w', newline='') as report_file:
-        csv_writer = csv.writer(report_file)
-        csv_writer.writerows(report)
-
-
-def print_report(report):
-    '''prints a report to terminal
-    and csv file '''
-    terminal_report = report[0]
-    csv_report = report[2]
-    report_type = report[1]
-    report_date = current.isoformat()
-
-    if len(report) > 3:
-        if (report[3] != 'all') and (report[3] != ''):
-            report_date = report[3]
-
-    create_terminal_report(report_type, terminal_report)
-    create_csv_report(report_type, csv_report, report_date)
-
-
-def plot_report(report):
-    '''visualizes report data 
-    in a line, bar or pie chart '''
-    plotable_reports = ['inventory', 'profit']
-    report_type = report[1]
-    if not (report_type in plotable_reports):
-        return f'Error: {report_type} report is not plotable'
-    elif (report_type == 'profit') and (report[3] != 'all'):
-        return 'Please leave date field empty'
-
-    report_data = report[2]
-    headers = report_data.pop(0)
-    x_axis = []
-    y_axis = []
-    alt_y_axis = []
-    alt_alt_y_axis = []
-
-    plt.figure(num=f'{report_type}')
-    if report_type == 'inventory':
-        for row in report_data:
-            product = row[0]
-            quantity = row[1]
-            y_axis.append(quantity)
-            x_axis.append(product)
-        # bar chart
-        plt.subplot(121)
-        plt.bar(x_axis, y_axis)
-        plt.xticks(rotation=90)
-        plt.ylabel('quantity')
-        # pie chart
-        plt.subplot(122)
-        plt.pie(y_axis, labels=x_axis, autopct='%1.1f%%')
-        plt.legend(bbox_to_anchor=(1, 1), loc='lower left', title='product')
-    else:
-        footer = report_data.pop()
-        for row in report_data:
-            trans_date = row[0]
-            costs = row[1]
-            revenue = row[2]
-            profit = row[3]
-            y_axis.append(costs)
-            alt_y_axis.append(revenue)
-            alt_alt_y_axis.append(profit)
-            x_axis.append(trans_date)
-        # plot
-        plt.subplot(121)
-        plt.plot(x_axis, y_axis, label='cost', marker='_', markersize=10)
-        plt.plot(x_axis, alt_y_axis, label='revenue', marker='+', markersize=10)
-        plt.plot(x_axis, alt_alt_y_axis, label='profit', linestyle='-.')
-        plt.ylabel('amount in $')
-        plt.xticks(rotation=45)
-        # bar
-        x = np.arange(len(x_axis))
-        ax = plt.subplot(122)
-        bar_width = 0.2  # the width of the bars
-        ax.bar(x - bar_width, y_axis, label='cost', width=bar_width)
-        ax.bar(x, alt_y_axis, label='revenue', width=bar_width)
-        ax.bar(x + bar_width, alt_alt_y_axis, label='profit', width=bar_width)
-        ax.set_xticks(x)
-        ax.set_xticklabels(x_axis)
-        ax.set_ylabel('amount in $')
-        plt.xticks(rotation=45)
-        plt.legend()
-    plt.tight_layout(pad=0.4)
-    plt.show()
-
 superpy = Supermarket()
-# plot_report(superpy.get_inventory_report())
-
-
-superpy.buy(product='mango\'s', quantity=16,
-            exp_date="2020-01-01", cost_per_unit=3)
+# superpy.buy(product='mango\'s', quantity=16,
+#             exp_date="2020-01-01", cost_per_unit=3)
 # print_report(superpy.get_low_stock_report(4))
-superpy.buy('bananas', 2, 0.2, "2021-05-01")
-superpy.buy('kiwi\'s', 6, 1, "2022-06-01")
-superpy.buy('bananas', 7, 0.2, "2021-05-03")
-superpy.sell(product='mango\'s', quantity=10,
-             purchase_id="#SUP210121PURCH01", price_per_unit=10)
-# current -= timedelta(days=2)  # current.reverse_time(2)
-current += timedelta(days=2) #def advance_time(num_days)
-superpy.sell(product='bananas', quantity=5,
-             purchase_id="#SUP210121PURCH04", price_per_unit=2)
-superpy.sell(product='bananas', quantity=2,
-             purchase_id="#SUP210121PURCH04", price_per_unit=3)
-superpy.sell(product='kiwi\'s', quantity=3,
-             purchase_id="#SUP210121PURCH03", price_per_unit=5)
+# superpy.buy('bananas', 2, 0.2, "2021-05-01")
+# superpy.buy('kiwi\'s', 6, 1, "2022-06-01")
+# superpy.buy('bananas', 7, 0.2, "2021-05-03")
+# superpy.sell(product='mango\'s', quantity=10,
+#              purchase_id="#SUP210121PURCH01", price_per_unit=10)
+# superpy.sell(product='bananas', quantity=5,
+#              purchase_id="#SUP210121PURCH04", price_per_unit=2)
+# superpy.sell(product='bananas', quantity=2,
+#              purchase_id="#SUP210121PURCH04", price_per_unit=3)
+# superpy.sell(product='kiwi\'s', quantity=3,
+#              purchase_id="#SUP210121PURCH03", price_per_unit=5)
 # print_report(superpy.get_purchase_report('2021-01-19'))
 # print_report(superpy.get_sales_report())
 # superpy.discard(product='bananas', exp_date="2021-05-01", quantity=2)
@@ -639,6 +514,3 @@ superpy.sell(product='kiwi\'s', quantity=3,
 # print_report(superpy.get_products_report())
 # print_report(superpy.get_bestselling_days(year="2021"))
 # print_report(superpy.get_bestselling_products())
-
-plot_report(superpy.get_inventory_report())
-# plot_report(superpy.get_profit_report())
