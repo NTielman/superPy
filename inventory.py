@@ -8,6 +8,10 @@ class Supermarket():
     expiry_dates = {}
     inventory = {}
 
+'''upon buying, selling, discarding or changing inventory, mester update root-inventory file tmb mesora. otherwise the changes won't hold, prob is that on __init__ i can't use
+the buy() func cause it will add the already existing inventory to the inventory. whivch is not the bedoeling. purchases.csv, sales.csv get updated with every buy/ sell trans
+inventory reflects current inventory inventory report ta reflect inventory di specific date. of den init if product tin purchase-id kaba, buy function shouldn't buy/ add it to inventory again.'''
+
     def __init__(self):
         '''please ensure to place your initial inventory
         in the same directory as main/helper.py

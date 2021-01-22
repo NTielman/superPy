@@ -1,4 +1,3 @@
-# Imports
 import argparse
 from inventory import superpy
 from plot_report import plot_report
@@ -10,22 +9,32 @@ from current_date import current
 __winc_id__ = 'a2bc36ea784242e4989deb157d527ba0'
 __human_name__ = 'superpy'
 
-current_day = current.isoformat()
+current_day = current.current_date.isoformat()
 
 def handle_args(args):
     '''handles parsed args and calls mathcing command functions'''
     command = args.command
     if command == 'buy':
-        ##############################
-        print('chosen command is to buy')
+        product = args.product
+        quantity = args.quantity
+        unit_cost = args.cost
+        exp_date = args.exp_date
+        purchase_date = args.purch_date
+        superpy.buy(product=product, quantity=quantity, exp_date=exp_date, cost_per_unit=unit_cost, purchase_date=purchase_date)
     elif command == 'sell':
-        ##############################
-        print('chosen command is to buy')
+        product = args.product
+        quantity = args.quantity
+        unit_price = args.price
+        purch_id = args.purch_id
+        sell_date = args.sell_date
+        superpy.sell(product=product, quantity=quantity, price_per_unit=unit_price, purchase_id=purch_id, sell_date=sell_date)
     elif command == 'discard':
-        ##############################
-        print('chosen command is to buy')
+        product = args.product
+        quantity = args.quantity
+        exp_date = args.exp_date
+        superpy.discard(product=product, exp_date=exp_date, quantity=quantity)
     elif command == 'plot':
-        report_type = args.report  #inventory or profit
+        report_type = args.report
         if report_type == 'inventory':
             plot_report(superpy.get_inventory_report())
         else:
@@ -71,8 +80,12 @@ def handle_args(args):
         elif report_type == 'best-sell-products':
             save_report(superpy.get_bestselling_products(args.date), default_date=current_day)
     elif command == 'date':
-        ##############################
-        print('chosen command is to buy')
+        if args.reset:
+            current.reset_time()
+        elif args.advance:
+            current.advance_time(num_of_days=args.advance)
+        elif args.reverse:
+            current.reverse_time(num_of_days=args.reverse)
 
 def main():
     parser = argparse.ArgumentParser(prog='superpy', description="Track and report inventory")
