@@ -1,6 +1,11 @@
 from datetime import date, timedelta, datetime
+from create_directory import create_directory
 import csv
 import os
+
+'''upon buying, selling, discarding or changing inventory, mester update root-inventory file tmb mesora. otherwise the changes won't hold, prob is that on __init__ i can't use
+the buy() func cause it will add the already existing inventory to the inventory. whivch is not the bedoeling. purchases.csv, sales.csv get updated with every buy/ sell trans
+inventory reflects current inventory inventory report ta reflect inventory di specific date.of den init if product tin purchase - id kaba, buy function shouldn 't buy/ add it to inventory again.'''
 
 class Supermarket():
     purchases = {}
@@ -8,18 +13,14 @@ class Supermarket():
     expiry_dates = {}
     inventory = {}
 
-'''upon buying, selling, discarding or changing inventory, mester update root-inventory file tmb mesora. otherwise the changes won't hold, prob is that on __init__ i can't use
-the buy() func cause it will add the already existing inventory to the inventory. whivch is not the bedoeling. purchases.csv, sales.csv get updated with every buy/ sell trans
-inventory reflects current inventory inventory report ta reflect inventory di specific date. of den init if product tin purchase-id kaba, buy function shouldn't buy/ add it to inventory again.'''
-
     def __init__(self):
         '''please ensure to place your initial inventory
-        in the same directory as main/helper.py
-        please ensure to name the initial inventory "root_inventory.csv"'''
+        in the root_files directory 
+        please ensure to name the initial inventory "root_inventory.csv" '''
+        #find root folder path
+        dir_path = create_directory('root_files')
         file_name = 'root_inventory.csv'
-        full_path = os.path.realpath(__file__)
-        dir_name = os.path.dirname(full_path)
-        file_path = os.path.join(dir_name, file_name)
+        file_path = os.path.join(dir_path, file_name)
 
         # if "root_inventory.csv" exists in current directory
         if os.path.isfile(file_path):
