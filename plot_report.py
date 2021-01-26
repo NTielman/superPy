@@ -1,5 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from rich.console import Console
+
+console = Console()
 
 plt.style.use('dark_background')
 
@@ -67,4 +70,5 @@ def plot_report(report):
         plt.xticks(rotation=45)
         plt.legend()
     plt.tight_layout(pad=0.4)
+    console.print(f'[bold]Plotting [medium_purple3]{report_type} [/medium_purple3]report...[/bold]')
     plt.show()

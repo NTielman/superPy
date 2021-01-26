@@ -1,22 +1,32 @@
+from rich.console import Console
+from prettytable import PrettyTable
+
+console = Console()
+
 def create_terminal_report(report_type, report):
     '''formats and prints report to terminal'''
-    line_length = 90
-    header_lines = '#' * line_length
-    division_line = '_' * line_length
+    title=f'\n[bold]{report_type.upper()} REPORT[/bold]'
+    table = PrettyTable()
+    table.field_names = report.pop(0)
 
-    # print report title and header
-    print('\n')
-    print(header_lines)
-    print(f'{report_type.upper() + " REPORT":^90}')
-    print(header_lines)
-
-    # print report body
+    reports_with_footers = ['purchases', 'sales', 'profit']
+    if report_type in reports_with_footers:
+        footer = report.pop()
+    #print report body
     for line in report:
-        print(line)
-        print(division_line)
+        table.add_row(line)
+    table.align = 'r'
+    console.print(title)
+    console.print(table)
+    #print report footer if available
+    if report_type in reports_with_footers:
+        footer_padding = (3 * (len(table.field_names) - 1))
+        table_width = sum(table._widths)
+        console.print('| ' + (' ' * (table_width - len(footer[0])) + ' ' * footer_padding) + footer[0] + ' |')
+        console.print('+-' + '-' * table_width + '-' * footer_padding + '-+')
 
 def print_report(report):
     '''prints a report to terminal'''
-    terminal_report = report[0]
+    terminal_report = report[2]
     report_type = report[1]
     create_terminal_report(report_type, terminal_report)

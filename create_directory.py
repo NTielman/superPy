@@ -1,4 +1,7 @@
 import os
+from rich.console import Console
+
+console = Console()
 
 def create_directory(dir_name):
     '''creates a folder in current directory'''
@@ -11,4 +14,4 @@ def create_directory(dir_name):
             os.makedirs(dir_path)
         return dir_path
     except OSError:
-        print(f'Error: Creating folder "{dir_name}"')
+        console.print(f'[bold magenta]Error: Creating folder "{dir_name}"[/bold magenta]')

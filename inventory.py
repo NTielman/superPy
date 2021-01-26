@@ -2,10 +2,9 @@ from datetime import date, timedelta, datetime
 from create_directory import create_directory
 import csv
 import os
+from rich.console import Console
 
-'''upon buying, selling, discarding or changing inventory, mester update root-inventory file tmb mesora. otherwise the changes won't hold, prob is that on __init__ i can't use
-the buy() func cause it will add the already existing inventory to the inventory. whivch is not the bedoeling. purchases.csv, sales.csv get updated with every buy/ sell trans
-inventory reflects current inventory inventory report ta reflect inventory di specific date.of den init if product tin purchase - id kaba, buy function shouldn 't buy/ add it to inventory again.'''
+console = Console()
 
 class Supermarket():
     purchases = {}
@@ -14,29 +13,90 @@ class Supermarket():
     inventory = {}
 
     def __init__(self):
-        '''please ensure to place your initial inventory
-        in the root_files directory 
-        please ensure to name the initial inventory "root_inventory.csv" '''
-        #find root folder path
+        '''checks if an inventory already exists 
+        and initialises inventory'''
         dir_path = create_directory('root_files')
-        file_name = 'root_inventory.csv'
-        file_path = os.path.join(dir_path, file_name)
+        self.dir_path = dir_path
 
-        # if "root_inventory.csv" exists in current directory
-        if os.path.isfile(file_path):
-            with open(file_path, newline='') as csvfile:
-                reader = csv.reader(csvfile)
-                # skip header
-                next(reader)
+        inventory_path = os.path.join(dir_path, 'root_inventory.csv')
+        expiry_path = os.path.join(dir_path, 'root_expiry_dates.csv')
+        purchases_path = os.path.join(dir_path, 'root_purchases.csv')
+        sales_path = os.path.join(dir_path, 'root_sales.csv')
 
+        if os.path.isfile(inventory_path):
+            #initialise self.inventory
+            with open(inventory_path, newline='') as csvfile:
+                reader = csv.DictReader(csvfile)
                 for row in reader:
-                    product = row[0]
-                    quantity = float(row[1])
-                    cost_per_unit = float(row[2])
-                    exp_date = row[3]
-                    purchase_date = row[4]
-                    self.buy(product, quantity, cost_per_unit,
-                             exp_date, purchase_date)
+                    product = row['product']
+                    quantity = float(row['quantity'])
+                    # add product to inventory
+                    self.inventory[product] = quantity
+        if os.path.isfile(expiry_path):
+            #initialise self.expiry_dates
+            with open(expiry_path, newline='') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    expiry_date = row['expiry_date']
+                    product = row['product']
+                    quantity = float(row['quantity'])
+                    # if expiry_date not yet in expiry dates
+                    if not (expiry_date in self.expiry_dates):
+                        # create a dict
+                        self.expiry_dates[expiry_date] = {}
+                    self.expiry_dates[expiry_date][product] = quantity
+        if os.path.isfile(purchases_path):
+            #initialise self.purchases
+            with open(purchases_path, newline='') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    purchase_date = row['purchase_date']
+                    product = row['product']
+                    quantity = float(row['quantity'])
+                    unit_cost = float(row['unit_cost'])
+                    total_cost = float(row['total_cost'])
+                    expiry_date = row['expiry_date']
+                    purch_id = row['id']
+                    # if purchase date not yet in purchases
+                    if not (purchase_date in self.purchases):
+                        # create a transaction (purchases) list
+                        self.purchases[purchase_date] = []
+                    # add purchase info to purchase date
+                    purchase_info = {
+                        "product": product,
+                        "quantity": quantity,
+                        "unit_cost": unit_cost,
+                        "total_cost": total_cost,
+                        "expiry_date": expiry_date,
+                        "id": purch_id
+                    }
+                    self.purchases[purchase_date].append(purchase_info)
+        if os.path.isfile(sales_path):
+            #initialise self.sales
+            with open(sales_path, newline='') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    sales_date = row['sales_date']
+                    product = row['product']
+                    quantity = float(row['quantity'])
+                    unit_cost = float(row['unit_cost'])
+                    unit_price = float(row['unit_price'])
+                    total_income = float(row['total_income'])
+                    sale_id = row['id']
+                    # if transaction date not yet in sales
+                    if not (sales_date in self.sales):
+                        # create a transaction (sales) list
+                        self.sales[sales_date] = []
+                    # add sale info to transaction date
+                    sale_info = {
+                        "product": product,
+                        "quantity": quantity,
+                        "unit_cost": unit_cost,
+                        "unit_price": unit_price,
+                        "total_income": total_income,
+                        "id": sale_id
+                    }
+                    self.sales[sales_date].append(sale_info)
 
     def discard(self, product, exp_date, quantity=1):
         '''removes item(s) from inventory (bijv, if item is: defect, expired)
@@ -45,20 +105,50 @@ class Supermarket():
             del self.inventory[product]
         else:
             self.inventory[product] -= quantity
+        #update and write inventory.csv
+        inventory_file_path = os.path.join(self.dir_path, 'root_inventory.csv')
+        #could change below to a function update_root_inventory()
+        with open(inventory_file_path, 'w', newline='') as csvfile:
+            headers = ['product', 'quantity']
+            writer = csv.DictWriter(csvfile, fieldnames=headers)
+            writer.writeheader()
+            for product_name in self.inventory:
+                writer.writerow({'product': product_name, 'quantity': self.inventory[product_name]})
+
         # remove items from expiry dates
         if quantity >= self.expiry_dates[exp_date][product]:
             del self.expiry_dates[exp_date][product]
         else:
             self.expiry_dates[exp_date][product] -= quantity
+        #update and write expiry.csv
+        expiry_file_path = os.path.join(self.dir_path, 'root_expiry_dates.csv')
+        with open(expiry_file_path, 'w', newline='') as csvfile:
+            headers = ['expiry_date', 'product', 'quantity']
+            writer = csv.DictWriter(csvfile, fieldnames=headers)
+            writer.writeheader()
+            for expiry_date in self.expiry_dates:
+                for product_name in self.expiry_dates[expiry_date]:
+                    writer.writerow({'expiry_date': expiry_date, 'product': product_name, 'quantity': self.expiry_dates[expiry_date][product_name]})
+        console.print(f'[bold]Discarded [cyan1]{quantity} {product}[/cyan1] from inventory[/bold]')
 
     def buy(self, product, quantity, cost_per_unit, exp_date, purchase_date):
         '''adds a product to inventory and
-        adds product info to purchase records'''
+        adds product info to purchase records '''
+        #updates csvfiles: inventory change virtual inv kaba write , purchases (append) i expiry change self.expiry kaba write to exp.csv
         if product in self.inventory:
             self.inventory[product] += quantity
         else:
             # add product to inventory
             self.inventory[product] = quantity
+        #update and write inventory.csv
+        inventory_file_path = os.path.join(self.dir_path, 'root_inventory.csv')
+        with open(inventory_file_path, 'w', newline='') as csvfile:
+            headers = ['product', 'quantity']
+            writer = csv.DictWriter(csvfile, fieldnames=headers)
+            writer.writeheader()
+            for product_name in self.inventory:
+                writer.writerow({'product': product_name, 'quantity': self.inventory[product_name]})
+
         # if exp_date not yet in expiry dates
         if not (exp_date in self.expiry_dates):
             # create a dict
@@ -69,6 +159,16 @@ class Supermarket():
             self.expiry_dates[exp_date][product] = quantity
         else:
             self.expiry_dates[exp_date][product] += quantity
+        #update and write expiry.csv
+        expiry_file_path = os.path.join(self.dir_path, 'root_expiry_dates.csv')
+        with open(expiry_file_path, 'w', newline='') as csvfile:
+            headers = ['expiry_date', 'product', 'quantity']
+            writer = csv.DictWriter(csvfile, fieldnames=headers)
+            writer.writeheader()
+            for expiry_date in self.expiry_dates:
+                for product_name in self.expiry_dates[expiry_date]:
+                    writer.writerow({'expiry_date': expiry_date, 'product': product_name, 'quantity': self.expiry_dates[expiry_date][product_name]})
+            
         # if purchase date is empty, set current date as purch date
         # if not purchase_date:
         #     purchase_date = current.isoformat()
@@ -88,12 +188,29 @@ class Supermarket():
             "id": transaction_id
         }
         self.purchases[purchase_date].append(purchase_info)
-        return f'items added to inventory. Transaction ID: {transaction_id}'
+        #update root_purchases.csv
+        purchases_file_path = os.path.join(self.dir_path, 'root_purchases.csv')
+        if os.path.isfile(purchases_file_path):
+            #file exists append new info
+            with open(purchases_file_path, 'a', newline='') as csvfile:
+                headers = ['purchase_date', 'product', 'quantity', 'unit_cost', 'total_cost', 'expiry_date', 'id']
+                writer = csv.DictWriter(csvfile, fieldnames=headers)
+                writer.writerow({'purchase_date': purchase_date, 'product': product, 'quantity': quantity, 'unit_cost': cost_per_unit, 'total_cost': round((cost_per_unit*quantity), 2), 'expiry_date': exp_date, 'id': transaction_id})
+        else:
+            #file doesn't exist yet. write headers and create file 
+            with open(purchases_file_path, 'w', newline='') as csvfile:
+                headers = ['purchase_date', 'product', 'quantity', 'unit_cost', 'total_cost', 'expiry_date', 'id']
+                writer = csv.DictWriter(csvfile, fieldnames=headers)
+                writer.writeheader()
+                writer.writerow({'purchase_date': purchase_date, 'product': product, 'quantity': quantity, 'unit_cost': cost_per_unit, 'total_cost': round((cost_per_unit * quantity), 2), 'expiry_date': exp_date, 'id': transaction_id})
+        console.print(f'[bold]item(s) added to inventory. Transaction ID: [cyan1]{transaction_id}[/cyan1][/bold]')
 
     def sell(self, product, quantity, price_per_unit, purchase_id, sell_date):
         '''removes a product from inventory and
-        adds product info to sales records'''
+        adds product info to sales records '''
+        #update inventory, sales(append) i expiry csv files
         if not (product in self.inventory):
+            print(f"product: {product} not in stock")
             return f"product: {product} not in stock"
         if quantity > self.inventory[product]:
             return "not enough in stock to complete transaction"
@@ -108,13 +225,37 @@ class Supermarket():
         if quantity > self.expiry_dates[exp_date][product]:
             # ensure items of differing expiration dates are entered seperately
             return "incorrect quantity or purchase ID provided"
+
         # reduce product inventory quantities
         self.inventory[product] -= quantity
+        products_left = self.inventory[product]
+        if products_left == 0:
+            del self.inventory[product]
+        #update and write inventory.csv
+        inventory_file_path = os.path.join(self.dir_path, 'root_inventory.csv')
+        #could change below to a function update_root_inventory()
+        with open(inventory_file_path, 'w', newline='') as csvfile:
+            headers = ['product', 'quantity']
+            writer = csv.DictWriter(csvfile, fieldnames=headers)
+            writer.writeheader()
+            for product_name in self.inventory:
+                writer.writerow({'product': product_name, 'quantity': self.inventory[product_name]})
+
         # remove products and prod quantities from expiry date
         if quantity >= self.expiry_dates[exp_date][product]:
             del self.expiry_dates[exp_date][product]
         else:
             self.expiry_dates[exp_date][product] -= quantity
+        #update and write expiry.csv
+        expiry_file_path = os.path.join(self.dir_path, 'root_expiry_dates.csv')
+        with open(expiry_file_path, 'w', newline='') as csvfile:
+            headers = ['expiry_date', 'product', 'quantity']
+            writer = csv.DictWriter(csvfile, fieldnames=headers)
+            writer.writeheader()
+            for expiry_date in self.expiry_dates:
+                for product_name in self.expiry_dates[expiry_date]:
+                    writer.writerow({'expiry_date': expiry_date, 'product': product_name, 'quantity': self.expiry_dates[expiry_date][product_name]})
+
         # if transaction date not yet in sales
         # current_date = current.isoformat()
         if not (sell_date in self.sales):
@@ -132,28 +273,42 @@ class Supermarket():
             "id": transaction_id
         }
         self.sales[sell_date].append(sale_info)
-        products_left = self.inventory[product]
-        if products_left == 0:
-            del self.inventory[product]
-        elif products_left <= 5:
-            self.warn("low_stock")
+        #update root_sales.csv
+        sales_file_path = os.path.join(self.dir_path, 'root_sales.csv')
+        if os.path.isfile(sales_file_path):
+            #file exists append new info
+            with open(sales_file_path, 'a', newline='') as csvfile:
+                headers = ['sales_date', 'product', 'quantity', 'unit_cost', "unit_price", "total_income", 'id']
+                writer = csv.DictWriter(csvfile, fieldnames=headers)
+                writer.writerow({'sales_date': sell_date, 'product': product, 'quantity': quantity, 'unit_cost': unit_cost, "unit_price": price_per_unit, "total_income": round((price_per_unit*quantity), 2), 'id': transaction_id})
+        else:
+            #file doesn't exist yet. write headers and create file 
+            with open(sales_file_path, 'w', newline='') as csvfile:
+                headers = ['sales_date', 'product', 'quantity', 'unit_cost', "unit_price", "total_income", 'id']
+                writer = csv.DictWriter(csvfile, fieldnames=headers)
+                writer.writeheader()
+                writer.writerow({'sales_date': sell_date, 'product': product, 'quantity': quantity, 'unit_cost': unit_cost, "unit_price": price_per_unit, "total_income": round((price_per_unit*quantity), 2), 'id': transaction_id})
+        console.print(f'[bold]item(s) sold from inventory. Transaction ID: [cyan1]{transaction_id}[/cyan1][/bold]')
+        # if products_left <= 5:
+        #     self.warn("low_stock")
 
     def warn(self, message):
         #set timeout function 2/ 3 seconds so iot prints warning after report?
         if message == "low_stock":
-            print("Warning: some items are low on stock")
+            console.print("[bold magenta]Warning: some items are low on stock[/bold magenta]")
             answer = input(
                 "Would you like to print a low-stock report? (y/n)\n")
             if answer == 'y':
+                #print report no ta den file aki mas
                 print_report(self.get_low_stock_report())
         elif message == "expires_soon":
-            print("Warning: some items are close to expiring")
+            console.print("[bold magenta]Warning: some items are close to expiring[/bold magenta]")
             answer = input("Would you like to print an expiry report? (y/n)\n")
             if answer == 'y':
                 print_report(self.get_expiry_report())
         elif message == "expired_items":
-            print("Warning: some items have expired")
-            print("Consider discarding the items from inventory")
+            console.print("[bold magenta]Warning: some items have expired[/bold magenta]")
+            console.print("[bold]Consider [deep_sky_blue1]discarding[/deep_sky_blue1] the items from inventory[/bold]")
 
     def get_inventory_report(self):
         '''returns a list of products and product quantities
@@ -170,15 +325,15 @@ class Supermarket():
     def get_products_report(self):
         '''returns a list of all products the supermarket offers'''
         terminal_report = []
-        csv_report = []
+        csv_report = [['Product Name']]
         for product in self.inventory:
             terminal_report.append(f'{product}')
             csv_report.append([product])
         return [terminal_report, 'products', csv_report]
 
-#date (2021-01-13) if len date == 10 print report for specific day
-#date (2021-01) if len date == 7 print report for every day in specific month
-##date (2021) if len date == 4 print report for every (month) in specific year
+    #date (2021-01-13) if len date == 10 print report for specific day
+    #date (2021-01) if len date == 7 print report for every day in specific month
+    ##date (2021) if len date == 4 print report for every (month) in specific year
 
 
     def get_purchase_report(self, purchase_date='all'):
@@ -475,12 +630,12 @@ class Supermarket():
                             products_sold[product] = quantity
                         else:
                             products_sold[product] += quantity
-        # find highest product quantity
+        # find highest product quantity | por do this gelijk save highest num i i highest products bijv. if quantity == num of sales append to products list. else if quantity higher reinitialise product list to list = [product]
         for product in products_sold:
             product_quantity = products_sold[product]
             if product_quantity > num_of_sales:
                 num_of_sales = product_quantity
-        # find products with this number of sales
+        # find products with this number of sales 
         for product in products_sold:
             product_quantity = products_sold[product]
             if product_quantity == num_of_sales:

@@ -1,6 +1,9 @@
 import csv
 import os
 from create_directory import create_directory
+from rich.console import Console
+
+console = Console()
 
 def create_csv_report(report_type, report, report_date):
     '''formats and creates a csv report 
@@ -12,6 +15,7 @@ def create_csv_report(report_type, report, report_date):
     with open(file_path, 'w', newline='') as report_file:
         csv_writer = csv.writer(report_file)
         csv_writer.writerows(report)
+    console.print(f'[bold][medium_purple3]"{file_name}"[/medium_purple3] report was saved to: [medium_purple4]{dir_path}[/medium_purple4][/bold]')
 
 def save_report(report, default_date):
     '''saves a report to csv file '''
