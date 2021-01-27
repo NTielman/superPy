@@ -1,22 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from rich.console import Console
+from output_styling import superpy_theme
 
-console = Console()
-
+console = Console(theme=superpy_theme)
 plt.style.use('dark_background')
 
-def plot_report(report):
-    '''visualizes report data 
-    in a line, bar or pie chart '''
-    plotable_reports = ['inventory', 'profit']
-    report_type = report[1]
-    if not (report_type in plotable_reports):
-        return f'Error: {report_type} report is not plotable'
-    elif (report_type == 'profit') and (report[3] != 'all'):
-        return 'Please leave date field empty'
-
-    report_data = report[2]
+def create_graph(report_type, report_data)
     headers = report_data.pop(0)
     x_axis = []
     y_axis = []
@@ -70,5 +60,16 @@ def plot_report(report):
         plt.xticks(rotation=45)
         plt.legend()
     plt.tight_layout(pad=0.4)
-    console.print(f'[bold]Plotting [medium_purple3]{report_type} [/medium_purple3]report...[/bold]')
+    console.print(f'Plotting {report_type} report...', style='process_info')
     plt.show()
+
+def plot_report(report):
+    '''visualizes report data 
+    in a line, bar or pie chart '''
+    if report:
+        report_type = report[1]
+        report_data = report[2]
+        create_graph(report_type, report_data)
+    else:
+        console.print('Failure: could not create graph of report', style='failure')
+        return None

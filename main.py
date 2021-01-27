@@ -36,7 +36,7 @@ def handle_args(args):
         report_type = args.report
         if report_type == 'inventory':
             plot_report(superpy.get_inventory_report())
-        else:
+        elif report_type == 'profit':
             plot_report(superpy.get_profit_report())
     elif command == 'print':
         report_type = args.report

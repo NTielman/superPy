@@ -3,13 +3,15 @@ from create_directory import create_directory
 from id_decoder import id_decoder
 import csv
 import os
+from print_report import print_report
 from rich.console import Console
+from output_styling import superpy_theme
 
-console = Console()
+console = Console(theme=superpy_theme)
 
 class Supermarket():
     purchases = {}
-    sales = {}
+    sales = {} 
     expiry_dates = {}
     inventory = {}
 
@@ -103,6 +105,10 @@ class Supermarket():
         '''removes item(s) from inventory 
         (bijv, if item is: defect, expired) '''
         product_info = id_decoder(purch_id)
+        if not product_info:
+            console.print('Failure: could not discard item(s)', style='failure')
+            return None
+        
         product = product_info['product_name']
         exp_date = product_info['exp_date']
 
@@ -134,7 +140,7 @@ class Supermarket():
             for expiry_date in self.expiry_dates:
                 for product_name in self.expiry_dates[expiry_date]:
                     writer.writerow({'expiry_date': expiry_date, 'product': product_name, 'quantity': self.expiry_dates[expiry_date][product_name]})
-        console.print(f'[bold]Discarded [cyan1]{quantity} {product}[/cyan1] from inventory[/bold]')
+        console.print(f'Success: discarded [highlight]{quantity} {product}[/highlight] from inventory', style='success')
 
     def buy(self, product, quantity, cost_per_unit, exp_date, purchase_date):
         '''adds a product to inventory and
@@ -208,17 +214,19 @@ class Supermarket():
                 writer = csv.DictWriter(csvfile, fieldnames=headers)
                 writer.writeheader()
                 writer.writerow({'purchase_date': purchase_date, 'product': product, 'quantity': quantity, 'unit_cost': cost_per_unit, 'total_cost': round((cost_per_unit * quantity), 2), 'expiry_date': exp_date, 'id': transaction_id})
-        console.print(f'[bold]item(s) added to inventory. Transaction ID: [cyan1]{transaction_id}[/cyan1][/bold]')
+        console.print(f'Success: [highlight]{quantity} {product}[/highlight] added to inventory. Transaction ID: [highlight]{transaction_id}[/highlight]', style='success')
 
     def sell(self, product, quantity, price_per_unit, purchase_id, sell_date):
         '''removes a product from inventory and
         adds product info to sales records '''
         product_info = id_decoder(purchase_id)
+
         if not (product in self.inventory):
-            print(f"product: {product} not in stock")
-            return f"product: {product} not in stock"
+            console.print(f'Failure: "{product}" is not in stock', style='failure')
+            return None
         elif not product_info:
-            return f'purchase ID not found'
+            console.print(f'Failure: could not sell {product}', style='failure')
+            return None
         # elif quantity > self.inventory[product]:
         #     return "not enough in stock to complete transaction"
         
@@ -234,9 +242,10 @@ class Supermarket():
         # purchase_date = id_date.strftime("%Y-%m-%d")
         # exp_date = self.purchases[purchase_date][purchase_index]["expiry_date"]
         # unit_cost = self.purchases[purchase_date][purchase_index]["unit_cost"]
+        #if quantity higher than the quantity associated with purchase id 
         if quantity > self.expiry_dates[exp_date][product]:
-            # ensure items of differing expiration dates are entered seperately
-            return "incorrect quantity or purchase ID provided"
+            console.print(f'Failure: incorrect quantity or incorrect purchase ID provided', style='failure')
+            return None
 
         # reduce product inventory quantities
         self.inventory[product] -= quantity
@@ -300,27 +309,25 @@ class Supermarket():
                 writer = csv.DictWriter(csvfile, fieldnames=headers)
                 writer.writeheader()
                 writer.writerow({'sales_date': sell_date, 'product': product, 'quantity': quantity, 'unit_cost': unit_cost, "unit_price": price_per_unit, "total_income": round((price_per_unit*quantity), 2), 'id': transaction_id})
-        console.print(f'[bold]Sold {quantity} {product} from inventory. Transaction ID: [cyan1]{transaction_id}[/cyan1][/bold]')
+        console.print(f'Success: sold [highlight]{quantity} {product}[/highlight] from inventory. Transaction ID: [highlight]{transaction_id}[/highlight]', style='success')
         # if products_left <= 5:
         #     self.warn("low_stock")
 
     def warn(self, message):
         #set timeout function 2/ 3 seconds so iot prints warning after report?
         if message == "low_stock":
-            console.print("[bold magenta]Warning: some items are low on stock[/bold magenta]")
+            console.print('Warning: some items are low on stock', style='error')
             answer = input(
-                "Would you like to print a low-stock report? (y/n)\n")
+                "Would you like to print a [highlight]low-stock report[/highlight]? (y/n)\n")
             if answer == 'y':
-                #print report no ta den file aki mas
                 print_report(self.get_low_stock_report())
         elif message == "expires_soon":
-            console.print("[bold magenta]Warning: some items are close to expiring[/bold magenta]")
-            answer = input("Would you like to print an expiry report? (y/n)\n")
+            console.print('Warning: some items are close to expiring', style='error')
+            answer = input("Would you like to print an [highlight]expiry report[/highlight]? (y/n)\n")
             if answer == 'y':
                 print_report(self.get_expiry_report())
         elif message == "expired_items":
-            console.print("[bold magenta]Warning: some items have expired[/bold magenta]")
-            console.print("[bold]Consider [deep_sky_blue1]discarding[/deep_sky_blue1] the items from inventory[/bold]")
+            console.print('Warning: some items have expired, consider [highlight]discarding[/highlight] the items from inventory', style='error')
 
     def get_inventory_report(self):
         '''returns a list of products and product quantities
@@ -332,6 +339,9 @@ class Supermarket():
             terminal_report.append(
                 f'{product:<20}| {quantity}')
             csv_report.append([product, quantity])
+        if len(csv_report) <= 1:
+            console.print(f'Failure: no items found in inventory', style='failure')
+            return False
         return [terminal_report, 'inventory', csv_report]
 
     def get_products_report(self):
@@ -341,6 +351,9 @@ class Supermarket():
         for product in self.inventory:
             terminal_report.append(f'{product}')
             csv_report.append([product])
+        if len(csv_report) <= 1:
+            console.print(f'Failure: no items found in inventory', style='failure')
+            return False
         return [terminal_report, 'products', csv_report]
 
     def get_purchase_report(self, purchase_date='all'):
@@ -395,7 +408,7 @@ class Supermarket():
         #         csv_report.append(
         #             [purchase_date, product, quantity, unit_cost, total_spent, expiry_date, trans_id])
         if len(csv_report) <= 1:
-            print(f'No purchase records found for date: {purchase_date}')
+            console.print(f'Failure: No purchase records found for date: [highlight]{purchase_date}[/highlight]', style='failure')
             return False
             # terminal_report.append(
             #     f'No purchase records found for date: {purchase_date}')
@@ -454,7 +467,7 @@ class Supermarket():
         #         csv_report.append(
         #             [sell_date, product, quantity, unit_price, total_income, trans_id])
         if len(csv_report) <= 1:
-            print(f'No sale records found for date: {sell_date}')
+            console.print(f'Failure: no sale records found for date: [highlight]{sell_date}[/highlight]', style='failure')
             return False
         # else:
         #     terminal_report.append(
@@ -544,7 +557,7 @@ class Supermarket():
         #         csv_report.append(
         #             [profit_date, f'{quantity} x {product}', product_cost, product_revenue, product_profit])
         if len(csv_report) <= 1:
-            print(f'No sale records found for date: {profit_date}')
+            console.print(f'Failure: no sale records found for date: [highlight]{profit_date}[/highlight]', style='failure')
             return False
         # else:
         #     terminal_report.append(
@@ -571,6 +584,9 @@ class Supermarket():
                 terminal_report.append(
                     f'{product:<20}| {prod_quantity}')
                 csv_report.append([product, prod_quantity])
+        if len(csv_report) <= 1:
+            console.print(f'No items found with quantities lower than [highlight]{max_stock_amount}[/highlight]', style='success')
+            return False
         return [terminal_report, 'low stock', csv_report]
 
     def get_expiry_report(self, current_day, num_of_days=7):
@@ -603,8 +619,11 @@ class Supermarket():
                         f'{product:<15}| {quantity:<10}| {time_till_expiry.days} days')
                     csv_report.append(
                         [product, quantity, f'{time_till_expiry.days} days'])
-        if expired_items > 0:
-            self.warn("expired_items")
+        # if expired_items > 0:
+        #     self.warn("expired_items")
+        if len(csv_report) <= 1:
+            console.print(f'There are no items that expire within [highlight]{num_of_days}[/highlight] days', style='success')
+            return False
         return [terminal_report, 'expiry', csv_report]
 
     def get_bestselling_days(self, date='all'):
@@ -716,8 +735,8 @@ class Supermarket():
         #             if len(self.sales[sales_date]) == num_of_sales:
         #                 terminal_report.append(sales_date)
         #                 csv_report.append([sales_date])
-        if len(csv_report) <= 1:
-            print(f'No sale records found for date: {date}')
+        if len(csv_report) <= 2:
+            console.print(f'Failure: no sale records found for date: [highlight]{date}[/highlight]', style='failure')
             return False
         terminal_report.append(
             f'Total transactions made per day: {num_of_sales}')
@@ -784,7 +803,7 @@ class Supermarket():
                 terminal_report.append(product)
                 csv_report.append([product])
         if len(csv_report) <= 1:
-            print(f'No sale records found for date: {date}')
+            console.print(f'Failure: no sale records found for date: [highlight]{date}[/highlight]', style='failure')
             return False
         terminal_report.append(
             f'Total amount of product(s) sold: {num_of_sales}')

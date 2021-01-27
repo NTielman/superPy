@@ -1,6 +1,10 @@
 import csv
 import os
 from create_directory import create_directory
+from rich.console import Console
+from output_styling import superpy_theme
+
+console = Console(theme=superpy_theme)
 
 def id_decoder(trans_id):
     '''returns product data based on provided 
@@ -22,7 +26,6 @@ def id_decoder(trans_id):
                         product_info['unit_cost'] = float(row['unit_cost'])
                         id_start_index = trans_id.index('H') + 1
                         product_info['purchase_index'] = int(trans_id[id_start_index:]) - 1
-                        return product_info
     elif is_sales_id:
         sales_path = os.path.join(dir_path, 'root_sales.csv')
         with open(sales_path, newline='') as csvfile:
@@ -46,6 +49,9 @@ def id_decoder(trans_id):
                         product_info['total_profit'] = (total_revenue - total_cost)
                         id_start_index = trans_id.index('E') + 1
                         product_info['sale_index'] = int(trans_id[id_start_index:]) - 1
-                        return product_info
-    return False
+    if product_info:
+        return product_info
+    else:
+        console.print(f'Failure: no match found for ID: [highlight]{trans_id}[highlight]', style='failure')
+        return False
 
