@@ -1,22 +1,22 @@
-import csv
 import os
-from create_directory import create_directory
+import csv
 from rich.console import Console
+from create_directory import create_directory
 from output_styling import superpy_theme
 
 console = Console(theme=superpy_theme)
 
 def id_decoder(trans_id):
-    '''returns product data based on provided 
-    transaction id'''
+    '''returns product data based on 
+    a provided transaction id'''
     product_info = {}
     is_purchase_id = 'PURCH' in trans_id
     is_sales_id = 'SALE' in trans_id
     dir_path = create_directory('root_files')
 
     if is_purchase_id:
-        purchases_path = os.path.join(dir_path, 'root_purchases.csv')
-        with open(purchases_path, newline='') as csvfile:
+        root_purchases_path = os.path.join(dir_path, 'root_purchases.csv')
+        with open(root_purchases_path, newline='') as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
                     if row['id'] == trans_id:
@@ -24,11 +24,12 @@ def id_decoder(trans_id):
                         product_info['product_name'] = row['product']
                         product_info['exp_date'] = row['expiry_date']
                         product_info['unit_cost'] = float(row['unit_cost'])
-                        id_start_index = trans_id.index('H') + 1
+                        #find the index numbers that follow the word PURCH
+                        id_start_index = trans_id.index('H') + 1 
                         product_info['purchase_index'] = int(trans_id[id_start_index:]) - 1
     elif is_sales_id:
-        sales_path = os.path.join(dir_path, 'root_sales.csv')
-        with open(sales_path, newline='') as csvfile:
+        root_sales_path = os.path.join(dir_path, 'root_sales.csv')
+        with open(root_sales_path, newline='') as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
                     if row['id'] == trans_id:
@@ -47,6 +48,7 @@ def id_decoder(trans_id):
                         product_info['total_cost'] = total_cost
                         product_info['total_revenue'] = total_revenue
                         product_info['total_profit'] = (total_revenue - total_cost)
+                        #find the index numbers that follow the word SALE
                         id_start_index = trans_id.index('E') + 1
                         product_info['sale_index'] = int(trans_id[id_start_index:]) - 1
     if product_info:
@@ -54,4 +56,3 @@ def id_decoder(trans_id):
     else:
         console.print(f'Failure: no match found for ID: [highlight]{trans_id}[highlight]', style='failure')
         return False
-

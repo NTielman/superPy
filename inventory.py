@@ -1,11 +1,11 @@
+import os
+import csv
+from rich.console import Console
 from datetime import date, timedelta, datetime
 from create_directory import create_directory
-from id_decoder import id_decoder
-import csv
-import os
-from print_report import print_report
-from rich.console import Console
 from output_styling import superpy_theme
+from print_report import print_report
+from id_decoder import id_decoder
 
 console = Console(theme=superpy_theme)
 
@@ -20,23 +20,19 @@ class Supermarket():
         and initialises inventory'''
         dir_path = create_directory('root_files')
         self.dir_path = dir_path
-
         inventory_path = os.path.join(dir_path, 'root_inventory.csv')
         expiry_path = os.path.join(dir_path, 'root_expiry_dates.csv')
         purchases_path = os.path.join(dir_path, 'root_purchases.csv')
         sales_path = os.path.join(dir_path, 'root_sales.csv')
 
         if os.path.isfile(inventory_path):
-            #initialise self.inventory
             with open(inventory_path, newline='') as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
                     product = row['product']
                     quantity = float(row['quantity'])
-                    # add product to inventory
                     self.inventory[product] = quantity
         if os.path.isfile(expiry_path):
-            #initialise self.expiry_dates
             with open(expiry_path, newline='') as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
@@ -45,65 +41,46 @@ class Supermarket():
                     quantity = float(row['quantity'])
                     # if expiry_date not yet in expiry dates
                     if not (expiry_date in self.expiry_dates):
-                        # create a dict
                         self.expiry_dates[expiry_date] = {}
                     self.expiry_dates[expiry_date][product] = quantity
         if os.path.isfile(purchases_path):
-            #initialise self.purchases
             with open(purchases_path, newline='') as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
                     purchase_date = row['purchase_date']
-                    product = row['product']
-                    quantity = float(row['quantity'])
-                    unit_cost = float(row['unit_cost'])
-                    total_cost = float(row['total_cost'])
-                    expiry_date = row['expiry_date']
-                    purch_id = row['id']
+                    purchase_info = {
+                        "product": row['product'],
+                        "quantity": float(row['quantity']),
+                        "unit_cost": float(row['unit_cost']),
+                        "total_cost": float(row['total_cost']),
+                        "expiry_date": row['expiry_date'],
+                        "id": row['id']
+                    }
                     # if purchase date not yet in purchases
                     if not (purchase_date in self.purchases):
-                        # create a transaction (purchases) list
-                        self.purchases[purchase_date] = []
-                    # add purchase info to purchase date
-                    purchase_info = {
-                        "product": product,
-                        "quantity": quantity,
-                        "unit_cost": unit_cost,
-                        "total_cost": total_cost,
-                        "expiry_date": expiry_date,
-                        "id": purch_id
-                    }
+                        self.purchases[purchase_date] = []                    
                     self.purchases[purchase_date].append(purchase_info)
         if os.path.isfile(sales_path):
-            #initialise self.sales
             with open(sales_path, newline='') as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
                     sales_date = row['sales_date']
-                    product = row['product']
-                    quantity = float(row['quantity'])
-                    unit_cost = float(row['unit_cost'])
-                    unit_price = float(row['unit_price'])
-                    total_income = float(row['total_income'])
-                    sale_id = row['id']
+                    sale_info = {
+                        "product": row['product'],
+                        "quantity":float(row['quantity']),
+                        "unit_cost": float(row['unit_cost']),
+                        "unit_price": float(row['unit_price']),
+                        "total_income": float(row['total_income']),
+                        "id": row['id']
+                    }
                     # if transaction date not yet in sales
                     if not (sales_date in self.sales):
-                        # create a transaction (sales) list
                         self.sales[sales_date] = []
-                    # add sale info to transaction date
-                    sale_info = {
-                        "product": product,
-                        "quantity": quantity,
-                        "unit_cost": unit_cost,
-                        "unit_price": unit_price,
-                        "total_income": total_income,
-                        "id": sale_id
-                    }
                     self.sales[sales_date].append(sale_info)
 
-    def discard(self, purch_id, quantity=1):
+    def discard(self, purch_id, quantity):
         '''removes item(s) from inventory 
-        (bijv, if item is: defect, expired) '''
+        without affecting sale/profit reports'''
         product_info = id_decoder(purch_id)
         if not product_info:
             console.print('Failure: could not discard item(s)', style='failure')
@@ -111,36 +88,38 @@ class Supermarket():
         
         product = product_info['product_name']
         exp_date = product_info['exp_date']
+        self.inventory[product] -= quantity
+        self.expiry_dates[exp_date][product] -= quantity
 
-        if quantity >= self.inventory[product]:
+        if self.inventory[product] <= 0:
             del self.inventory[product]
-        else:
-            self.inventory[product] -= quantity
-        #update and write inventory.csv
+        if self.expiry_dates[exp_date][product] <= 0:
+            del self.expiry_dates[exp_date][product]
+        
+        self.update_root_inventory()
+        self.update_root_expiry()
+        console.print(f'Success: discarded [highlight]{quantity} {product}[/highlight] from inventory', style='success')
+
+    def update_root_inventory(self):
+        '''updates and re-writes root_inventory.csv'''
         inventory_file_path = os.path.join(self.dir_path, 'root_inventory.csv')
-        #could change below to a function update_root_inventory()
         with open(inventory_file_path, 'w', newline='') as csvfile:
             headers = ['product', 'quantity']
             writer = csv.DictWriter(csvfile, fieldnames=headers)
             writer.writeheader()
-            for product_name in self.inventory:
-                writer.writerow({'product': product_name, 'quantity': self.inventory[product_name]})
-
-        # remove items from expiry dates
-        if quantity >= self.expiry_dates[exp_date][product]:
-            del self.expiry_dates[exp_date][product]
-        else:
-            self.expiry_dates[exp_date][product] -= quantity
-        #update and write expiry.csv
+            for product in self.inventory:
+                writer.writerow({'product': product, 'quantity': self.inventory[product]})
+    
+    def update_root_expiry(self):
+        '''updates and rewrites root_expiry_dates.csv'''
         expiry_file_path = os.path.join(self.dir_path, 'root_expiry_dates.csv')
         with open(expiry_file_path, 'w', newline='') as csvfile:
             headers = ['expiry_date', 'product', 'quantity']
             writer = csv.DictWriter(csvfile, fieldnames=headers)
             writer.writeheader()
             for expiry_date in self.expiry_dates:
-                for product_name in self.expiry_dates[expiry_date]:
-                    writer.writerow({'expiry_date': expiry_date, 'product': product_name, 'quantity': self.expiry_dates[expiry_date][product_name]})
-        console.print(f'Success: discarded [highlight]{quantity} {product}[/highlight] from inventory', style='success')
+                for product in self.expiry_dates[expiry_date]:
+                    writer.writerow({'expiry_date': expiry_date, 'product': product, 'quantity': self.expiry_dates[expiry_date][product]})
 
     def buy(self, product, quantity, cost_per_unit, exp_date, purchase_date):
         '''adds a product to inventory and
@@ -356,7 +335,7 @@ class Supermarket():
             return False
         return [terminal_report, 'products', csv_report]
 
-    def get_purchase_report(self, purchase_date='all'):
+    def get_purchase_report(self, purchase_date):
         '''returns all purchase transactions 
         or all purchases made on a specific date '''
         terminal_report = [
@@ -418,7 +397,7 @@ class Supermarket():
         csv_report.append([f'Total Cost: ${round(total_cost, 2)}'])
         return [terminal_report, 'purchases', csv_report, purchase_date]
 
-    def get_sales_report(self, sell_date='all'):
+    def get_sales_report(self, sell_date):
         '''returns all sales transactions 
         or all sales made on a specific date'''
         terminal_report = [
@@ -477,7 +456,7 @@ class Supermarket():
         csv_report.append([f'Total Revenue: ${round(total_revenue, 2)}'])
         return [terminal_report, 'sales', csv_report, sell_date]
 
-    def get_profit_report(self, profit_date='all'):
+    def get_profit_report(self, profit_date):
         '''returns total profit made over time 
         or profit made on a specific date '''
         is_day_report = len(profit_date) == 10
@@ -568,7 +547,7 @@ class Supermarket():
         csv_report.append([f'Total Profit: ${round(total_profit, 2)}'])
         return [terminal_report, 'profit', csv_report, profit_date]
 
-    def get_low_stock_report(self, max_stock_amount=2):
+    def get_low_stock_report(self, max_stock_amount):
         '''returns a list of products that are out of stock 
         or running low on stock'''
         terminal_report = [f'{"Product":<20}| Quantity']
@@ -589,7 +568,7 @@ class Supermarket():
             return False
         return [terminal_report, 'low stock', csv_report]
 
-    def get_expiry_report(self, current_day, num_of_days=7):
+    def get_expiry_report(self, current_day, num_of_days):
         '''returns a list of expired items or 
         items that expire a specific set of days from now'''
         terminal_report = [
@@ -626,7 +605,7 @@ class Supermarket():
             return False
         return [terminal_report, 'expiry', csv_report]
 
-    def get_bestselling_days(self, date='all'):
+    def get_bestselling_days(self, date):
         '''returns days with most sales transactions (most products sold) of all times
         or days with most sales transactions of a specific month and year '''
         terminal_report = ['Best selling day(s)']
@@ -747,7 +726,7 @@ class Supermarket():
         #change returned val di year month. {false}{false}
         return [terminal_report, 'best-selling-days', csv_report, date]
 
-    def get_bestselling_products(self, date='all'):
+    def get_bestselling_products(self, date):
         '''returns the best selling products of all times
         or best selling products of a specific date'''
         terminal_report = []
@@ -815,26 +794,3 @@ class Supermarket():
         return [terminal_report, 'best-selling products', csv_report, date]
 
 superpy = Supermarket()
-# superpy.buy(product='mango\'s', quantity=16,
-#             exp_date="2020-01-01", cost_per_unit=3)
-# print_report(superpy.get_low_stock_report(4))
-# superpy.buy('bananas', 2, 0.2, "2021-05-01")
-# superpy.buy('kiwi\'s', 6, 1, "2022-06-01")
-# superpy.buy('bananas', 7, 0.2, "2021-05-03")
-# superpy.sell(product='mango\'s', quantity=10,
-#              purchase_id="#SUP210121PURCH01", price_per_unit=10)
-# superpy.sell(product='bananas', quantity=5,
-#              purchase_id="#SUP210121PURCH04", price_per_unit=2)
-# superpy.sell(product='bananas', quantity=2,
-#              purchase_id="#SUP210121PURCH04", price_per_unit=3)
-# superpy.sell(product='kiwi\'s', quantity=3,
-#              purchase_id="#SUP210121PURCH03", price_per_unit=5)
-# print_report(superpy.get_purchase_report('2021-01-19'))
-# print_report(superpy.get_sales_report())
-# superpy.discard(product='bananas', exp_date="2021-05-01", quantity=2)
-# print_report(superpy.get_inventory_report())
-# print_report(superpy.get_profit_report(profit_date="2021-01-19"))
-# print_report(superpy.get_expiry_report())
-# print_report(superpy.get_products_report())
-# print_report(superpy.get_bestselling_days(year="2021"))
-# print_report(superpy.get_bestselling_products())
