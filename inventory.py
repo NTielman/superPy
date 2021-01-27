@@ -1,5 +1,6 @@
 from datetime import date, timedelta, datetime
 from create_directory import create_directory
+from id_decoder import id_decoder
 import csv
 import os
 from rich.console import Console
@@ -98,9 +99,13 @@ class Supermarket():
                     }
                     self.sales[sales_date].append(sale_info)
 
-    def discard(self, product, exp_date, quantity=1):
-        '''removes item(s) from inventory (bijv, if item is: defect, expired)
-        and adds to loss records'''
+    def discard(self, purch_id, quantity=1):
+        '''removes item(s) from inventory 
+        (bijv, if item is: defect, expired) '''
+        product_info = id_decoder(purch_id)
+        product = product_info['product_name']
+        exp_date = product_info['exp_date']
+
         if quantity >= self.inventory[product]:
             del self.inventory[product]
         else:
@@ -208,20 +213,27 @@ class Supermarket():
     def sell(self, product, quantity, price_per_unit, purchase_id, sell_date):
         '''removes a product from inventory and
         adds product info to sales records '''
-        #update inventory, sales(append) i expiry csv files
+        product_info = id_decoder(purchase_id)
         if not (product in self.inventory):
             print(f"product: {product} not in stock")
             return f"product: {product} not in stock"
-        if quantity > self.inventory[product]:
-            return "not enough in stock to complete transaction"
+        elif not product_info:
+            return f'purchase ID not found'
+        # elif quantity > self.inventory[product]:
+        #     return "not enough in stock to complete transaction"
+        
+        # product = product_info['product_name']
+        exp_date = product_info['exp_date']
+        purchase_date = product_info['trans_date']
+        purchase_index = product_info['purchase_index']
+        unit_cost = product_info['unit_cost']
+
         # extract product info from purchase id
-        id_date = datetime.strptime(purchase_id[4:10], "%y%m%d")
-        purchase_index = int(purchase_id[15:17]) - 1
-        purchase_date = id_date.strftime("%Y-%m-%d")
-        if not purchase_date in self.purchases:
-            return "purchase ID not found"
-        exp_date = self.purchases[purchase_date][purchase_index]["expiry_date"]
-        unit_cost = self.purchases[purchase_date][purchase_index]["unit_cost"]
+        # id_date = datetime.strptime(purchase_id[4:10], "%y%m%d")
+        # purchase_index = int(purchase_id[15:17]) - 1
+        # purchase_date = id_date.strftime("%Y-%m-%d")
+        # exp_date = self.purchases[purchase_date][purchase_index]["expiry_date"]
+        # unit_cost = self.purchases[purchase_date][purchase_index]["unit_cost"]
         if quantity > self.expiry_dates[exp_date][product]:
             # ensure items of differing expiration dates are entered seperately
             return "incorrect quantity or purchase ID provided"
@@ -288,7 +300,7 @@ class Supermarket():
                 writer = csv.DictWriter(csvfile, fieldnames=headers)
                 writer.writeheader()
                 writer.writerow({'sales_date': sell_date, 'product': product, 'quantity': quantity, 'unit_cost': unit_cost, "unit_price": price_per_unit, "total_income": round((price_per_unit*quantity), 2), 'id': transaction_id})
-        console.print(f'[bold]item(s) sold from inventory. Transaction ID: [cyan1]{transaction_id}[/cyan1][/bold]')
+        console.print(f'[bold]Sold {quantity} {product} from inventory. Transaction ID: [cyan1]{transaction_id}[/cyan1][/bold]')
         # if products_left <= 5:
         #     self.warn("low_stock")
 
@@ -331,20 +343,15 @@ class Supermarket():
             csv_report.append([product])
         return [terminal_report, 'products', csv_report]
 
-    #date (2021-01-13) if len date == 10 print report for specific day
-    #date (2021-01) if len date == 7 print report for every day in specific month
-    ##date (2021) if len date == 4 print report for every (month) in specific year
-
-
     def get_purchase_report(self, purchase_date='all'):
         '''returns all purchase transactions 
-        or all purchases made on a specific date'''
+        or all purchases made on a specific date '''
         terminal_report = [
             f'{"Date":<11}| {"Product":<10}| {"Amnt":<8}| {"Unit Cost":<10}| {"Total":<8}| {"Exp Date":<11}| Transaction ID']
         csv_report = [['Date', 'Product', 'Amnt', 'Unit Cost',
                        'Total', 'Exp Date', 'Transaction ID']]
         total_cost = 0
-        if purchase_date == 'all':
+        if purchase_date == 'all': #change purrchase date to '-' character ku tei aanwezig in all dates
             for date in self.purchases:
                 for purchase_num in range(len(self.purchases[date])):
                     product = self.purchases[date][purchase_num]["product"]
@@ -358,24 +365,42 @@ class Supermarket():
                         f'{date:<11}| {product:<10}| {quantity:<8}| {unit_cost:<10}| {total_spent:<8}| {expiry_date:<11}| {trans_id}')
                     csv_report.append(
                         [date, product, quantity, unit_cost, total_spent, expiry_date, trans_id])
-        elif purchase_date in self.purchases:
-            for purchase_num in range(len(self.purchases[purchase_date])):
-                product = self.purchases[purchase_date][purchase_num]["product"]
-                quantity = self.purchases[purchase_date][purchase_num]["quantity"]
-                unit_cost = self.purchases[purchase_date][purchase_num]["unit_cost"]
-                total_spent = self.purchases[purchase_date][purchase_num]["total_cost"]
-                expiry_date = self.purchases[purchase_date][purchase_num]["expiry_date"]
-                trans_id = self.purchases[purchase_date][purchase_num]["id"]
-                total_cost += total_spent
-                terminal_report.append(
-                    f'{purchase_date:<11}| {product:<10}| {quantity:<8}| {unit_cost:<10}| {total_spent:<10}| {expiry_date:<10}| {trans_id}')
-                csv_report.append(
-                    [purchase_date, product, quantity, unit_cost, total_spent, expiry_date, trans_id])
-        else:
-            terminal_report.append(
-                f'No purchase records found for date: {purchase_date}')
-            csv_report.append(
-                [f'No purchase records found for date: {purchase_date}'])
+        else: #if date = '-' use below for loop so
+            for date in self.purchases:
+                # if date contains specific year bijv:'2021' or '2021-01'
+                if purchase_date in date:
+                    for purchase_num in range(len(self.purchases[date])):
+                        product = self.purchases[date][purchase_num]["product"]
+                        quantity = self.purchases[date][purchase_num]["quantity"]
+                        unit_cost = self.purchases[date][purchase_num]["unit_cost"]
+                        total_spent = self.purchases[date][purchase_num]["total_cost"]
+                        expiry_date = self.purchases[date][purchase_num]["expiry_date"]
+                        trans_id = self.purchases[date][purchase_num]["id"]
+                        total_cost += total_spent
+                        terminal_report.append(
+                            f'{date:<11}| {product:<10}| {quantity:<8}| {unit_cost:<10}| {total_spent:<8}| {expiry_date:<11}| {trans_id}')
+                        csv_report.append(
+                            [date, product, quantity, unit_cost, total_spent, expiry_date, trans_id])
+        # elif is_day_report and purchase_date in self.purchases:
+        #     for purchase_num in range(len(self.purchases[purchase_date])):
+        #         product = self.purchases[purchase_date][purchase_num]["product"]
+        #         quantity = self.purchases[purchase_date][purchase_num]["quantity"]
+        #         unit_cost = self.purchases[purchase_date][purchase_num]["unit_cost"]
+        #         total_spent = self.purchases[purchase_date][purchase_num]["total_cost"]
+        #         expiry_date = self.purchases[purchase_date][purchase_num]["expiry_date"]
+        #         trans_id = self.purchases[purchase_date][purchase_num]["id"]
+        #         total_cost += total_spent
+        #         terminal_report.append(
+        #             f'{purchase_date:<11}| {product:<10}| {quantity:<8}| {unit_cost:<10}| {total_spent:<10}| {expiry_date:<10}| {trans_id}')
+        #         csv_report.append(
+        #             [purchase_date, product, quantity, unit_cost, total_spent, expiry_date, trans_id])
+        if len(csv_report) <= 1:
+            print(f'No purchase records found for date: {purchase_date}')
+            return False
+            # terminal_report.append(
+            #     f'No purchase records found for date: {purchase_date}')
+            # csv_report.append(
+            #     [f'No purchase records found for date: {purchase_date}'])
         terminal_report.append(f'Total Cost: ${round(total_cost, 2)}')
         csv_report.append([f'Total Cost: ${round(total_cost, 2)}'])
         return [terminal_report, 'purchases', csv_report, purchase_date]
@@ -401,33 +426,77 @@ class Supermarket():
                         f'{date:<11}| {product:<15}| {quantity:<10}| {unit_price:<13}| {total_income:<10}| {trans_id}')
                     csv_report.append(
                         [date, product, quantity, unit_price, total_income, trans_id])
-        elif sell_date in self.sales:
-            for sale_num in range(len(self.sales[sell_date])):
-                product = self.sales[sell_date][sale_num]["product"]
-                quantity = self.sales[sell_date][sale_num]["quantity"]
-                unit_price = self.sales[sell_date][sale_num]["unit_price"]
-                total_income = self.sales[sell_date][sale_num]["total_income"]
-                trans_id = self.sales[sell_date][sale_num]["id"]
-                total_revenue += total_income
-                terminal_report.append(
-                    f'{sell_date:<11}| {product:<15}| {quantity:<10}| {unit_price:<13}| {total_income:<10}| {trans_id}')
-                csv_report.append(
-                    [sell_date, product, quantity, unit_price, total_income, trans_id])
-        else:
-            terminal_report.append(
-                f'No sale records found for date: {sell_date}')
-            csv_report.append([f'No sale records found for date: {sell_date}'])
+        else: #if date = '-' use below for loop so
+            for date in self.sales:
+                # if date contains specific year bijv:'2021' or '2021-01'
+                if sell_date in date:
+                    for sale_num in range(len(self.sales[date])):
+                        product = self.sales[date][sale_num]["product"]
+                        quantity = self.sales[date][sale_num]["quantity"]
+                        unit_price = self.sales[date][sale_num]["unit_price"]
+                        total_income = self.sales[date][sale_num]["total_income"]
+                        trans_id = self.sales[date][sale_num]["id"]
+                        total_revenue += total_income
+                        terminal_report.append(
+                            f'{date:<11}| {product:<15}| {quantity:<10}| {unit_price:<13}| {total_income:<10}| {trans_id}')
+                        csv_report.append(
+                            [date, product, quantity, unit_price, total_income, trans_id])
+        # elif sell_date in self.sales:
+        #     for sale_num in range(len(self.sales[sell_date])):
+        #         product = self.sales[sell_date][sale_num]["product"]
+        #         quantity = self.sales[sell_date][sale_num]["quantity"]
+        #         unit_price = self.sales[sell_date][sale_num]["unit_price"]
+        #         total_income = self.sales[sell_date][sale_num]["total_income"]
+        #         trans_id = self.sales[sell_date][sale_num]["id"]
+        #         total_revenue += total_income
+        #         terminal_report.append(
+        #             f'{sell_date:<11}| {product:<15}| {quantity:<10}| {unit_price:<13}| {total_income:<10}| {trans_id}')
+        #         csv_report.append(
+        #             [sell_date, product, quantity, unit_price, total_income, trans_id])
+        if len(csv_report) <= 1:
+            print(f'No sale records found for date: {sell_date}')
+            return False
+        # else:
+        #     terminal_report.append(
+        #         f'No sale records found for date: {sell_date}')
+        #     csv_report.append([f'No sale records found for date: {sell_date}'])
         terminal_report.append(f'Total Revenue: ${round(total_revenue, 2)}')
         csv_report.append([f'Total Revenue: ${round(total_revenue, 2)}'])
         return [terminal_report, 'sales', csv_report, sell_date]
 
     def get_profit_report(self, profit_date='all'):
         '''returns total profit made over time 
-        or profit made on a specific date'''
+        or profit made on a specific date '''
+        is_day_report = len(profit_date) == 10
         terminal_report = []
         csv_report = []
         total_profit = 0
-        if profit_date == 'all':
+        if is_day_report and profit_date in self.sales:
+            terminal_report.append(
+                f'{"Date":<11}| {"Amnt x Product":<20}| {"Total Cost":<15}| {"Total Revenue":<15}| Total Profit')
+            csv_report.append(
+                ['Date', 'Amnt x Product', 'Total Cost', 'Total Revenue', 'Total Profit'])
+            for sale_num in range(len(self.sales[profit_date])):
+                sale_id = self.sales[profit_date][sale_num]["id"]
+                product_info = id_decoder(sale_id)
+                product = product_info['product_name'] 
+                quantity = product_info['sold_quantity'] 
+                unit_cost = product_info['unit_cost']
+                product_cost = product_info['total_cost'] 
+                product_revenue = product_info['total_revenue'] 
+                product_profit = product_info['total_profit'] 
+                # product = self.sales[profit_date][sale_num]["product"]
+                # quantity = self.sales[profit_date][sale_num]["quantity"]
+                # unit_cost = self.sales[profit_date][sale_num]["unit_cost"]
+                # product_cost = unit_cost * quantity
+                # product_revenue = self.sales[profit_date][sale_num]["total_income"]
+                # product_profit = product_revenue - product_cost
+                total_profit += product_profit
+                terminal_report.append(
+                    f'{profit_date:<11}| {str(quantity) + " x " + product:<20}| {product_cost:<15}| {product_revenue:<15}| {product_profit}')
+                csv_report.append(
+                    [profit_date, f'{quantity} x {product}', product_cost, product_revenue, product_profit])
+        else:
             terminal_report.append(
                 f'{"Date":<11}| {"Total Cost":<15}| {"Total Revenue":<15}| Total Profit')
             csv_report.append(
@@ -436,41 +505,52 @@ class Supermarket():
                 day_profit = 0
                 day_revenue = 0
                 day_cost = 0
-                for sale_num in range(len(self.sales[date])):
-                    quantity = self.sales[date][sale_num]["quantity"]
-                    unit_cost = self.sales[date][sale_num]["unit_cost"]
-                    product_cost = unit_cost * quantity
-                    product_revenue = self.sales[date][sale_num]["total_income"]
-                    product_profit = product_revenue - product_cost
-                    day_cost += product_cost
-                    day_revenue += product_revenue
-                    day_profit += product_profit
-                total_profit += day_profit
-                terminal_report.append(
-                    f'{date:<11}| {day_cost:<15}| {day_revenue:<15}| {day_profit}')
-                csv_report.append([date, day_cost, day_revenue, day_profit])
-        elif profit_date in self.sales:
-            terminal_report.append(
-                f'{"Date":<11}| {"Amnt x Product":<20}| {"Total Cost":<15}| {"Total Revenue":<15}| Total Profit')
-            csv_report.append(
-                ['Date', 'Amnt x Product', 'Total Cost', 'Total Revenue', 'Total Profit'])
-            for sale_num in range(len(self.sales[profit_date])):
-                product = self.sales[profit_date][sale_num]["product"]
-                quantity = self.sales[profit_date][sale_num]["quantity"]
-                unit_cost = self.sales[profit_date][sale_num]["unit_cost"]
-                product_cost = unit_cost * quantity
-                product_revenue = self.sales[profit_date][sale_num]["total_income"]
-                product_profit = product_revenue - product_cost
-                total_profit += product_profit
-                terminal_report.append(
-                    f'{profit_date:<11}| {str(quantity) + " x " + product:<20}| {product_cost:<15}| {product_revenue:<15}| {product_profit}')
-                csv_report.append(
-                    [profit_date, f'{quantity} x {product}', product_cost, product_revenue, product_profit])
-        else:
-            terminal_report.append(
-                f'No sale records found for date: {profit_date}')
-            csv_report.append(
-                [f'No sale records found for date: {profit_date}'])
+                if profit_date in date:
+                    for sale_num in range(len(self.sales[date])):
+                        sale_id = self.sales[date][sale_num]["id"]
+                        product_info = id_decoder(sale_id)
+                        quantity = product_info['sold_quantity'] 
+                        unit_cost = product_info['unit_cost']
+                        product_cost = product_info['total_cost'] 
+                        product_revenue = product_info['total_revenue'] 
+                        product_profit = product_info['total_profit'] 
+                        # quantity = self.sales[date][sale_num]["quantity"]
+                        # unit_cost = self.sales[date][sale_num]["unit_cost"]
+                        # product_cost = unit_cost * quantity
+                        # product_revenue = self.sales[date][sale_num]["total_income"]
+                        # product_profit = product_revenue - product_cost
+                        day_cost += product_cost
+                        day_revenue += product_revenue
+                        day_profit += product_profit
+                    total_profit += day_profit
+                    terminal_report.append(
+                        f'{date:<11}| {day_cost:<15}| {day_revenue:<15}| {day_profit}')
+                    csv_report.append([date, day_cost, day_revenue, day_profit])
+        # elif profit_date in self.sales:
+        #     terminal_report.append(
+        #         f'{"Date":<11}| {"Amnt x Product":<20}| {"Total Cost":<15}| {"Total Revenue":<15}| Total Profit')
+        #     csv_report.append(
+        #         ['Date', 'Amnt x Product', 'Total Cost', 'Total Revenue', 'Total Profit'])
+        #     for sale_num in range(len(self.sales[profit_date])):
+        #         product = self.sales[profit_date][sale_num]["product"]
+        #         quantity = self.sales[profit_date][sale_num]["quantity"]
+        #         unit_cost = self.sales[profit_date][sale_num]["unit_cost"]
+        #         product_cost = unit_cost * quantity
+        #         product_revenue = self.sales[profit_date][sale_num]["total_income"]
+        #         product_profit = product_revenue - product_cost
+        #         total_profit += product_profit
+        #         terminal_report.append(
+        #             f'{profit_date:<11}| {str(quantity) + " x " + product:<20}| {product_cost:<15}| {product_revenue:<15}| {product_profit}')
+        #         csv_report.append(
+        #             [profit_date, f'{quantity} x {product}', product_cost, product_revenue, product_profit])
+        if len(csv_report) <= 1:
+            print(f'No sale records found for date: {profit_date}')
+            return False
+        # else:
+        #     terminal_report.append(
+        #         f'No sale records found for date: {profit_date}')
+        #     csv_report.append(
+        #         [f'No sale records found for date: {profit_date}'])
         terminal_report.append(f'Total Profit: ${round(total_profit, 2)}')
         csv_report.append([f'Total Profit: ${round(total_profit, 2)}'])
         return [terminal_report, 'profit', csv_report, profit_date]
@@ -527,73 +607,135 @@ class Supermarket():
             self.warn("expired_items")
         return [terminal_report, 'expiry', csv_report]
 
-    def get_bestselling_days(self, year=False, month=False):
+    def get_bestselling_days(self, date='all'):
         '''returns days with most sales transactions (most products sold) of all times
         or days with most sales transactions of a specific month and year '''
-        #change month/ year to date='all'. if date == (yyyy-mm) best day of month report, if date == (yyyy) best day of year report
-        #if date (yyyy-mm-dd) print cannot get bestselling day for specific date only for month or year or all time
-        terminal_report = []
-        csv_report = []
+        terminal_report = ['Best selling day(s)']
+        csv_report = [['Best selling day(s)']]
         num_of_sales = 0
-        if (not year) and (not month):
+        highest_day_profit = 0
+        if date == 'all':
             # return bestselling days of all time
             # find the highest num of daily sales
+            #find highest profit day
             for sales_date in self.sales:
+                day_profit = 0
                 day_sales = len(self.sales[sales_date])
                 if day_sales > num_of_sales:
                     num_of_sales = day_sales
+                for sale_num in range(len(self.sales[sales_date])):
+                    sale_id = self.sales[sales_date][sale_num]["id"]
+                    product_info = id_decoder(sale_id)
+                    # quantity = self.sales[sales_date][sale_num]["quantity"]
+                    # unit_cost = self.sales[sales_date][sale_num]["unit_cost"]
+                    # product_cost = unit_cost * quantity
+                    # product_revenue = self.sales[sales_date][sale_num]["total_income"]
+                    # product_profit = product_revenue - product_cost
+                    product_profit = product_info['total_profit']
+                    day_profit += product_profit
+                if day_profit > highest_day_profit: #if > reset highest profit + highest prof day list = [date]
+                    highest_day_profit = day_profit #if == highest prof day list.append date
             # find dates with this number of sales
             for sales_date in self.sales:
                 if len(self.sales[sales_date]) == num_of_sales:
                     terminal_report.append(sales_date)
                     csv_report.append([sales_date])
-        elif year and month:
+            terminal_report.append('Highest Profit day(s)')
+            csv_report.append(['Highest Profit day(s)'])
+            for sales_date in self.sales:
+                day_profit = 0
+                for sale_num in range(len(self.sales[sales_date])):
+                    sale_id = self.sales[sales_date][sale_num]["id"]
+                    product_info = id_decoder(sale_id)
+                    # quantity = self.sales[sales_date][sale_num]["quantity"]
+                    # unit_cost = self.sales[sales_date][sale_num]["unit_cost"]
+                    # product_cost = unit_cost * quantity
+                    # product_revenue = self.sales[sales_date][sale_num]["total_income"]
+                    # product_profit = product_revenue - product_cost
+                    product_profit = product_info['total_profit']
+                    day_profit += product_profit
+                if day_profit == highest_day_profit:
+                    terminal_report.append(sales_date)
+                    csv_report.append([sales_date])
+        else:
             # return bestselling days of specific year and month
             for sales_date in self.sales:
-                if f'{year}-{month}' in sales_date:
+                if date in sales_date:
+                    day_profit = 0
                     day_sales = len(self.sales[sales_date])
                     if day_sales > num_of_sales:
                         num_of_sales = day_sales
+                    for sale_num in range(len(self.sales[sales_date])):
+                        sale_id = self.sales[sales_date][sale_num]["id"]
+                        product_info = id_decoder(sale_id)
+                        # quantity = self.sales[sales_date][sale_num]["quantity"]
+                        # unit_cost = self.sales[sales_date][sale_num]["unit_cost"]
+                        # product_cost = unit_cost * quantity
+                        # product_revenue = self.sales[sales_date][sale_num]["total_income"]
+                        # product_profit = product_revenue - product_cost
+                        product_profit = product_info['total_profit']
+                        day_profit += product_profit
+                    if day_profit > highest_day_profit: #if > reset highest profit + highest prof day list = [date]
+                        highest_day_profit = day_profit #if == highest prof day list.append date
             for sales_date in self.sales:
-                if f'{year}-{month}' in sales_date:
+                if date in sales_date:
                     if len(self.sales[sales_date]) == num_of_sales:
                         terminal_report.append(sales_date)
                         csv_report.append([sales_date])
-        elif year or month:
-            # return bestselling days for specific year or month
+            terminal_report.append('Highest Profit day(s)')
+            csv_report.append(['Highest Profit day(s)'])
             for sales_date in self.sales:
-                sales_year = sales_date[:4]
-                sales_month = sales_date[5:7]
-                if sales_year == year or sales_month == month:
-                    day_sales = len(self.sales[sales_date])
-                    if day_sales > num_of_sales:
-                        num_of_sales = day_sales
-            for sales_date in self.sales:
-                sales_year = sales_date[:4]
-                sales_month = sales_date[5:7]
-                if sales_year == year or sales_month == month:
-                    if len(self.sales[sales_date]) == num_of_sales:
+                if date in sales_date:
+                    day_profit = 0
+                    for sale_num in range(len(self.sales[sales_date])):
+                        sale_id = self.sales[sales_date][sale_num]["id"]
+                        product_info = id_decoder(sale_id)
+                        # quantity = self.sales[sales_date][sale_num]["quantity"]
+                        # unit_cost = self.sales[sales_date][sale_num]["unit_cost"]
+                        # product_cost = unit_cost * quantity
+                        # product_revenue = self.sales[sales_date][sale_num]["total_income"]
+                        # product_profit = product_revenue - product_cost
+                        product_profit = product_info['total_profit']
+                        day_profit += product_profit
+                    if day_profit == highest_day_profit:
                         terminal_report.append(sales_date)
                         csv_report.append([sales_date])
+        # elif year or month:
+        #     # return bestselling days for specific year or month
+        #     for sales_date in self.sales:
+        #         sales_year = sales_date[:4]
+        #         sales_month = sales_date[5:7]
+        #         if sales_year == year or sales_month == month:
+        #             day_sales = len(self.sales[sales_date])
+        #             if day_sales > num_of_sales:
+        #                 num_of_sales = day_sales
+        #     for sales_date in self.sales:
+        #         sales_year = sales_date[:4]
+        #         sales_month = sales_date[5:7]
+        #         if sales_year == year or sales_month == month:
+        #             if len(self.sales[sales_date]) == num_of_sales:
+        #                 terminal_report.append(sales_date)
+        #                 csv_report.append([sales_date])
+        if len(csv_report) <= 1:
+            print(f'No sale records found for date: {date}')
+            return False
         terminal_report.append(
             f'Total transactions made per day: {num_of_sales}')
         csv_report.append([f'Total transactions made per day: {num_of_sales}'])
-        if month:
-            month_num = int(month)
-            month = date(1900, month_num, 1).strftime('%B')
+        # if month:
+        #     month_num = int(month)
+        #     month = date(1900, month_num, 1).strftime('%B')
         #change returned val di year month. {false}{false}
-        return [terminal_report, 'best-selling days', csv_report, f'{year}{month}']
+        return [terminal_report, 'best-selling-days', csv_report, date]
 
-    def get_bestselling_products(self, year=False, month=False):
+    def get_bestselling_products(self, date='all'):
         '''returns the best selling products of all times
-        or best selling products of a specific month and year '''
-         #change month/ year to date='all'. if date (yyyy-mm-dd) best prod(s) of day
-         # if date == (yyyy-mm) best products of month, if date == (yyyy) best prod of year
+        or best selling products of a specific date'''
         terminal_report = []
         csv_report = []
         num_of_sales = 0
         products_sold = {}
-        if (not year) and (not month):
+        if date == 'all':
             # return bestselling products of all time
             for sales_date in self.sales:
                 # find all products sold and quantities sold
@@ -604,10 +746,10 @@ class Supermarket():
                         products_sold[product] = quantity
                     else:
                         products_sold[product] += quantity
-        elif year and month:
+        else:
             # return bestselling products of specific year and month
             for sales_date in self.sales:
-                if f'{year}-{month}' in sales_date:
+                if date in sales_date:
                     # find all products sold and quantities sold
                     for sale_index in range(len(self.sales[sales_date])):
                         product = self.sales[sales_date][sale_index]["product"]
@@ -616,20 +758,20 @@ class Supermarket():
                             products_sold[product] = quantity
                         else:
                             products_sold[product] += quantity
-        elif year or month:
-            # return bestselling products for specific year or month
-            for sales_date in self.sales:
-                sales_year = sales_date[:4]
-                sales_month = sales_date[5:7]
-                if sales_year == year or sales_month == month:
-                    # find all products sold and quantities sold
-                    for sale_index in range(len(self.sales[sales_date])):
-                        product = self.sales[sales_date][sale_index]["product"]
-                        quantity = self.sales[sales_date][sale_index]["quantity"]
-                        if not (product in products_sold):
-                            products_sold[product] = quantity
-                        else:
-                            products_sold[product] += quantity
+        # elif year or month:
+        #     # return bestselling products for specific year or month
+        #     for sales_date in self.sales:
+        #         sales_year = sales_date[:4]
+        #         sales_month = sales_date[5:7]
+        #         if sales_year == year or sales_month == month:
+        #             # find all products sold and quantities sold
+        #             for sale_index in range(len(self.sales[sales_date])):
+        #                 product = self.sales[sales_date][sale_index]["product"]
+        #                 quantity = self.sales[sales_date][sale_index]["quantity"]
+        #                 if not (product in products_sold):
+        #                     products_sold[product] = quantity
+        #                 else:
+        #                     products_sold[product] += quantity
         # find highest product quantity | por do this gelijk save highest num i i highest products bijv. if quantity == num of sales append to products list. else if quantity higher reinitialise product list to list = [product]
         for product in products_sold:
             product_quantity = products_sold[product]
@@ -641,14 +783,17 @@ class Supermarket():
             if product_quantity == num_of_sales:
                 terminal_report.append(product)
                 csv_report.append([product])
+        if len(csv_report) <= 1:
+            print(f'No sale records found for date: {date}')
+            return False
         terminal_report.append(
             f'Total amount of product(s) sold: {num_of_sales}')
         csv_report.append([f'Total amount of product(s) sold: {num_of_sales}'])
-        if month:
-            month_num = int(month)
-            month = date(1900, month_num, 1).strftime('%B')
+        # if month:
+        #     month_num = int(month)
+        #     month = date(1900, month_num, 1).strftime('%B')
             #change returned val di year month. {false}{false}
-        return [terminal_report, 'best-selling products', csv_report, f'{year}{month}']
+        return [terminal_report, 'best-selling products', csv_report, date]
 
 superpy = Supermarket()
 # superpy.buy(product='mango\'s', quantity=16,

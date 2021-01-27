@@ -29,10 +29,9 @@ def handle_args(args):
         sell_date = args.sell_date
         superpy.sell(product=product, quantity=quantity, price_per_unit=unit_price, purchase_id=purch_id, sell_date=sell_date)
     elif command == 'discard':
-        product = args.product
+        purch_id = args.purch_id
         quantity = args.quantity
-        exp_date = args.exp_date
-        superpy.discard(product=product, exp_date=exp_date, quantity=quantity)
+        superpy.discard(purch_id=purch_id, quantity=quantity)
     elif command == 'plot':
         report_type = args.report
         if report_type == 'inventory':
@@ -110,10 +109,8 @@ def main():
 
     #discard command and discard arguments
     discard_parser = subparsers.add_parser('discard', help='discard and remove product from inventory')
-    discard_parser.add_argument('--product', type=str, help='product name', required=True)
     discard_parser.add_argument('--quantity', type=float, help='product quantity', default=1.0)
-    # discard_parser.add_argument('--purch-ID', type=str, dest='purch_id', help='product purchase ID', required=True)
-    discard_parser.add_argument('--exp-date', type=str, dest='exp_date', help='product expiration date', required=True)
+    discard_parser.add_argument('--purch-ID', type=str, dest='purch_id', help='product purchase ID', required=True)
 
     #plot command and plot arguments
     plot_parser = subparsers.add_parser('plot', help='plot report data')
