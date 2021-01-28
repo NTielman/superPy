@@ -70,5 +70,5 @@ def plot_report(report):
         report_data = report[1]
         create_graph(report_type, report_data)
     else:
-        console.print('Failure: could not create graph of report', style='failure')
+        console.print('Failure: could not create report', style='failure')
         return None

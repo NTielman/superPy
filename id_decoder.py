@@ -36,7 +36,7 @@ def id_decoder(trans_id):
                         unit_cost = float(row['unit_cost'])
                         unit_price = float(row['unit_price'])
                         sold_quantity = float(row['quantity'])
-                        total_revenue = float(row['total_income'])
+                        total_revenue = float(row["total_revenue"])
                         total_cost = (sold_quantity * unit_cost)
                         
                         product_info['trans_date'] = row['sales_date']
@@ -54,5 +54,4 @@ def id_decoder(trans_id):
     if product_info:
         return product_info
     else:
-        console.print(f'Failure: no match found for ID: [highlight]{trans_id}[highlight]', style='failure')
         return False

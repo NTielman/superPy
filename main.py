@@ -21,7 +21,7 @@ def handle_args(args):
     elif command == 'sell':
         superpy.sell(product=args.product, quantity=args.quantity, price_per_unit=args.price, purchase_id=args.purch_id, sell_date=args.sell_date)
     elif command == 'discard':
-        superpy.discard(purch_id=args.purch_id, quantity=args.quantity)
+        superpy.discard(purchase_id=args.purch_id, quantity=args.quantity)
     elif command == 'plot':
         report_type = args.report
         if report_type == 'inventory':
@@ -41,7 +41,7 @@ def handle_args(args):
         elif report_type == 'profit':
             print_report(superpy.get_profit_report(args.date))
         elif report_type == 'low-stock':
-            print_report(superpy.get_low_stock_report(args.stock_amnt))
+            print_report(superpy.get_low_stock_report(args.stock_qty))
         elif report_type == 'expiry':
             print_report(superpy.get_expiry_report(current_day, args.exp_days))
         elif report_type == 'best-sell-days':
@@ -61,7 +61,7 @@ def handle_args(args):
         elif report_type == 'profit':
             save_report(superpy.get_profit_report(args.date), default_date=current_day)
         elif report_type == 'low-stock':
-            save_report(superpy.get_low_stock_report(args.stock_amnt), default_date=current_day)
+            save_report(superpy.get_low_stock_report(args.stock_qty), default_date=current_day)
         elif report_type == 'expiry':
             save_report(superpy.get_expiry_report(current_day, args.exp_days), default_date=current_day)
         elif report_type == 'best-sell-days':
@@ -112,14 +112,14 @@ def main():
     print_parser = subparsers.add_parser('print', help='print report data to terminal')
     print_parser.add_argument('--report', type=str, help='report type', required=True, choices=['inventory', 'products', 'purchases', 'sales', 'profit', 'low-stock', 'expiry', 'best-sell-days', 'best-sell-products'])
     print_parser.add_argument('--date', type=str, help='report date', default='-')
-    print_parser.add_argument('--stock-amnt', type=int, dest='stock_amnt', help='max amount of stock', default=25)
+    print_parser.add_argument('--stock-qty', type=int, dest='stock_qty', help='minimum stock quantity', default=10)
     print_parser.add_argument('--exp-days', type=int, dest='exp_days', help='number of days till expiration date', default=7)
 
     #save command and save arguments
     csv_parser = subparsers.add_parser('save', help='saves report data to a csv file')
     csv_parser.add_argument('--report', type=str, help='report type', required=True, choices=['inventory', 'products', 'purchases', 'sales', 'profit', 'low-stock', 'expiry', 'best-sell-days', 'best-sell-products'])
     csv_parser.add_argument('--date', type=str, help='report date', default='-')
-    csv_parser.add_argument('--stock-amnt', type=int, dest='stock_amnt', help='maxi amount of stock', default=25)
+    csv_parser.add_argument('--stock-qty', type=int, dest='stock_qty', help='minimum stock quantity', default=10)
     csv_parser.add_argument('--exp-days', type=int, dest='exp_days', help='number of days till expiration date', default=7)
 
     #date command and date arguments
