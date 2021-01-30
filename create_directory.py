@@ -15,4 +15,4 @@ def create_directory(dir_name):
             console.print(f'Created "{dir_name}" folder at {dir_path}')
         return dir_path
     except Exception as e:
-            console.print(e)
+        console.print(e)

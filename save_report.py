@@ -25,7 +25,7 @@ def save_report(report, default_date=current_day):
         report_body = report[1]
         report_date = default_date
 
-        #if user has passed in a report-date
+        # if user has passed in a report-date
         if (len(report) > 2) and (report[2] != '-'):
             report_date = report[2]
 
