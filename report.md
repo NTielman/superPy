@@ -1,0 +1,10 @@
+# Notable elements of SuperPy
+
+1. **Transaction ID:** A problem i faced, was the program's ability to differentiate between 2 or more product's with the same product_name. For example, if i have the following in my inventory:
+product: apples, cost: 0.20, expiry_date:  '2021-03-14'
+product: apples, cost: 0.50, expiry_date:  '2021-02-24'
+And i run the command: `--sell apples –price 3`. Would the program know which profit it should calculate? How will it know which precise apple with which expiration date it should remove from inventory? As such i thought about how supermarkets solve the problem of having various identical products in stock. The solution, i figured, is in the use of barcodes. When the cashier scans a product, the system decodes and knows exactly what product, with what cost and what expiration date is being sold. The purchase-ID and sales-ID's used in my superpy implementation, work in a similar way to a product's barcode. Decoding the ID allows superpy to obtain all the necessary product info (purchase date, cost, price, profit, expiry-date and whether the product is in stock), and allows for precise handling of nearly identical items.
+
+2. **Inventory health checker:** Thinking of potential pain points that a store owner or a supermarket manager may be faced with, I thought it would be of great help if the inventory auto regulates itself. As such on every run, superpy checks the inventory for potential issues and notifies the user whenever products are close to expiring, or are running low on stock. This would help the user to stay ahead of restocking and avoid any loss of profit due to expiry.
+
+3. **Bestselling products and bestselling day reports:** By analyzing their bestselling products day to day or month by month, store owners would gain valuable insight into their customer base. These reports help the user make calculated decisions on what products to restock, what days to hold sales on, whether to specialize on a single product etc. In short: they help the business run smoother.
