@@ -4,11 +4,12 @@ import update_root_data
 from rich.console import Console
 from datetime import date, timedelta, datetime
 from create_directory import create_directory
-from output_styling import superpy_theme
 from print_report import print_report
 from id_decoder import id_decoder
+from current_date import current
 
-console = Console(theme=superpy_theme)
+console = Console()
+current_day = current.current_date.isoformat()
 
 class Super_inventory():
     purchases = {}
@@ -76,7 +77,7 @@ class Super_inventory():
                         "quantity":float(row['quantity']),
                         "unit_cost": float(row['unit_cost']),
                         "unit_price": float(row['unit_price']),
-                        "total_income": float(row['total_income']),
+                        "total_revenue": float(row['total_revenue']),
                         "id": row['id']
                     }
                     if not (sales_date in self.sales):
@@ -92,12 +93,12 @@ class Super_inventory():
         product_info = id_decoder(purchase_id)
         #check for errors
         if not product_info:
-            console.print(f'Failure: no match found for ID: [highlight]{purchase_id}[highlight]', style='failure')
+            console.print(f'Failure: no match found for ID: {purchase_id}')
             return None
         product = product_info['product_name']
         exp_date = product_info['exp_date']
-        if not (product in self.expiry_dates[exp_date]):
-            console.print(f'Failure: product not found or incorrect ID: [highlight]{purchase_id}[highlight]', style='failure')
+        if (not (exp_date in self.expiry_dates)) or (not (product in self.expiry_dates[exp_date])):
+            console.print(f'Failure: product not found or incorrect ID: {purchase_id}')
             return None
         
         #update inventory
@@ -112,7 +113,7 @@ class Super_inventory():
             del self.expiry_dates[exp_date][product]
         update_root_data.root_expiry(self.dir_path, self.expiry_dates)
 
-        console.print(f'Success: discarded [highlight]{quantity} {product}[/highlight] from inventory', style='success')
+        console.print(f'Success: discarded {quantity} {product} from inventory')
 
     def buy(self, product, quantity, cost_per_unit, exp_date, purchase_date):
         '''adds a product to inventory and
@@ -149,7 +150,7 @@ class Super_inventory():
         self.purchases[purchase_date].append(purchase_info)
         update_root_data.root_purchases(self.dir_path, purchase_date, purchase_info)
         
-        console.print(f'Success: [highlight]{quantity} {product}[/highlight] added to inventory. Transaction ID: [highlight]{transaction_id}[/highlight]', style='success')
+        console.print(f'Success: {quantity} {product} added to inventory. Transaction ID: {transaction_id}')
 
     def sell(self, product, quantity, price_per_unit, purchase_id, sell_date):
         '''removes a product from inventory and
@@ -157,20 +158,23 @@ class Super_inventory():
         product_info = id_decoder(purchase_id)
         #check for errors
         if not product_info:
-            console.print(f'Failure: no match found for ID: [highlight]{purchase_id}[highlight]', style='failure')
+            console.print(f'Failure: no match found for ID: {purchase_id}')
             return None
         if product_info['product_name'] != product:
-            console.print('Failure: product does not match purchase ID, style='failure')
+            console.print('Failure: product does not match purchase ID')
             return None
         if not (product in self.inventory):
-            console.print(f'Failure: "{product}" is no longer in stock', style='failure')
+            console.print(f'Failure: "{product}" is no longer in stock')
             return None
         exp_date = product_info['exp_date']
         purchase_date = product_info['trans_date']
         purchase_index = product_info['purchase_index']
         unit_cost = product_info['unit_cost']
+        if (not (exp_date in self.expiry_dates)) or (not (product in self.expiry_dates[exp_date])):
+            console.print(f'Failure: "{product}" is no longer in stock')
+            return None
         if quantity > self.expiry_dates[exp_date][product]:
-            console.print(f'Failure: quantity is too high or incorrect purchase ID provided', style='failure')
+            console.print(f'Failure: quantity is too high or incorrect purchase ID provided')
             return None
 
         #update inventory
@@ -202,16 +206,16 @@ class Super_inventory():
         self.sales[sell_date].append(sale_info)
         update_root_data.root_sales(self.dir_path, sell_date, sale_info)
         
-        console.print(f'Success: sold [highlight]{quantity} {product}[/highlight] from inventory. Transaction ID: [highlight]{transaction_id}[/highlight]', style='success')
+        console.print(f'Success: sold {quantity} {product} from inventory. Transaction ID: {transaction_id}')
 
     def check_inventory_health(self):
         console.print('Running "Inventory Health" scan...')
         has_low_stock = self.get_low_stock_report()
         has_expired_stock = self.get_expiry_report()
         if has_low_stock:
-            console.print('Warning: some items are low on stock', style='error')
+            console.print('Warning: some items are low on stock')
         if has_expired_stock:
-            console.print('Warning: some items have expired or are close to expiring', style='error')
+            console.print('Warning: some items have expired or are close to expiring')
 
     def get_inventory_report(self):
         '''returns a list of products and product quantities
@@ -225,7 +229,7 @@ class Super_inventory():
             report.append([product, quantity])
 
         if len(report) <= 1: #if report only contains headers
-            console.print('No items found in inventory', style='process_info')
+            console.print('No items found in inventory')
             return False
         return ['inventory', report]
 
@@ -239,7 +243,7 @@ class Super_inventory():
             report.append([product])
 
         if len(report) <= 1:
-            console.print('No items found in inventory', style='process_info')
+            console.print('No items found in inventory')
             return False
         return ['products', report]
 
@@ -264,7 +268,7 @@ class Super_inventory():
                     report.append([trans_date, product, quantity, unit_cost, total_spent, expiry_date, trans_id])
 
         if len(report) <= 1:
-            console.print(f'No purchase records found for date: {purchase_date}', style='process_info')
+            console.print(f'No purchase records found for date: {purchase_date}')
             return False
         report.append([f'Total Cost: ${round(total_cost, 2)}']) #add report footer info
         return ['purchases', report, purchase_date]
@@ -289,7 +293,7 @@ class Super_inventory():
                     report.append([trans_date, product, quantity, unit_price, total_earned, trans_id])
 
         if len(report) <= 1:
-            console.print(f'No sale records found for date: {sell_date}', style='process_info')
+            console.print(f'No sale records found for date: {sell_date}')
             return False
         report.append([f'Total Revenue: ${round(total_revenue, 2)}'])
         return ['sales', report, sell_date]
@@ -336,7 +340,7 @@ class Super_inventory():
                     report.append([trans_date, day_cost, day_revenue, day_profit])
         
         if len(report) <= 1:
-            console.print(f'No sale records found for date: {profit_date}', style='process_info')
+            console.print(f'No sale records found for date: {profit_date}')
             return False
         report.append([f'Total Profit: ${round(total_profit, 2)}'])
         return ['profit', report, profit_date]
@@ -353,11 +357,11 @@ class Super_inventory():
                 report.append([product, quantity])
 
         if len(report) <= 1:
-            console.print(f'No items found with quantities lower than {minimum_qty}', style='process_info')
+            console.print(f'No items found with quantities lower than {minimum_qty}')
             return False
         return ['low stock', report]
 
-    def get_expiry_report(self, current_inventory_date, num_of_days=7):
+    def get_expiry_report(self, current_inventory_date=current_day, num_of_days=7):
         '''returns a list of expired items or items 
         that expire within a specific num of days from now'''
         report = []
@@ -380,7 +384,7 @@ class Super_inventory():
                     report.append([product, quantity, f'{time_till_expiry.days} days'])
 
         if len(report) <= 1:
-            console.print(f'No items found that expire within {num_of_days} days', style='process_info')
+            console.print(f'No items found that expire within {num_of_days} days')
             return False
         return ['expiry', report]
 
@@ -410,7 +414,7 @@ class Super_inventory():
                     report.append([day, num_of_sales])
 
         if len(report) <= 1:
-            console.print(f'No sale records found for date: {trans_date}', style='process_info')
+            console.print(f'No sale records found for date: {trans_date}')
             return False
         return ['best-selling days', report, trans_date]
 
@@ -446,8 +450,16 @@ class Super_inventory():
                 report.append([product, num_of_sales])
 
         if len(report) <= 1:
-            console.print(f'No sale records found for date: {trans_date}', style='process_info')
+            console.print(f'No sale records found for date: {trans_date}')
             return False
         return ['best-selling products', report, trans_date]
 
 superpy = Super_inventory()
+
+#add purch id to sales report i self.sales on every sale. adjust __init__ tmb 
+#either inventory or expiry dates needs to refer back to purch id. in plaats van apples: 3 prod_id: 3. if invemtory orei get inv report ta decode prod name, amd tells them all op bij elkaar
+# on sale the qty after purchid gets updated 
+#product lookup: --product apples returns inventory qty di apples i onderverdeling
+#i tur active purchid's ku tin e product name "apples" {apples: 8 - waarvan purchid1:5 -purchid2:3}
+#id lookup --purch or sale id returns prodname, cost, price, qty and if its still in stock
+#if currentdate ta being imported aki is it nodig den main tmb?

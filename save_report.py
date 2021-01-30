@@ -1,10 +1,11 @@
 import os
 import csv
 from rich.console import Console
+from current_date import current
 from create_directory import create_directory
-from output_styling import superpy_theme
 
-console = Console(theme=superpy_theme)
+console = Console()
+current_day = current.current_date.isoformat()
 
 def create_csv_report(report_type, report, report_date):
     '''creates and writes a csv report 
@@ -16,9 +17,9 @@ def create_csv_report(report_type, report, report_date):
     with open(file_path, 'w', newline='') as report_file:
         csv_writer = csv.writer(report_file)
         csv_writer.writerows(report)
-    console.print(f'Success: [highlight]"{file_name}"[/highlight] report was saved to: [highlight]{dir_path}[/highlight]', style='success')
+    console.print(f'Success: "{file_name}" report was saved to: {dir_path}')
 
-def save_report(report, default_date):
+def save_report(report, default_date=current_day):
     if report:
         report_type = report[0]
         report_body = report[1]
@@ -30,5 +31,5 @@ def save_report(report, default_date):
 
         create_csv_report(report_type, report_body, report_date)
     else:
-        console.print('Failure: could not create report', style='failure')
+        console.print('Failure: could not create report')
         return None

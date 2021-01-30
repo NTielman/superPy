@@ -51,23 +51,23 @@ def handle_args(args):
     elif command == 'save':
         report_type = args.report
         if report_type == 'inventory':
-            save_report(superpy.get_inventory_report(), default_date=current_day)
+            save_report(superpy.get_inventory_report())
         elif report_type == 'products':
-            save_report(superpy.get_products_report(), default_date=current_day)
+            save_report(superpy.get_products_report())
         elif report_type == 'purchases':
-            save_report(superpy.get_purchase_report(args.date), default_date=current_day)
+            save_report(superpy.get_purchase_report(args.date))
         elif report_type == 'sales':
-            save_report(superpy.get_sales_report(args.date), default_date=current_day)
+            save_report(superpy.get_sales_report(args.date))
         elif report_type == 'profit':
-            save_report(superpy.get_profit_report(args.date), default_date=current_day)
+            save_report(superpy.get_profit_report(args.date))
         elif report_type == 'low-stock':
-            save_report(superpy.get_low_stock_report(args.stock_qty), default_date=current_day)
+            save_report(superpy.get_low_stock_report(args.stock_qty))
         elif report_type == 'expiry':
-            save_report(superpy.get_expiry_report(current_day, args.exp_days), default_date=current_day)
+            save_report(superpy.get_expiry_report(num_of_days=args.exp_days))
         elif report_type == 'best-sell-days':
-            save_report(superpy.get_bestselling_days(args.date), default_date=current_day)
+            save_report(superpy.get_bestselling_days(args.date))
         elif report_type == 'best-sell-products':
-            save_report(superpy.get_bestselling_products(args.date), default_date=current_day)
+            save_report(superpy.get_bestselling_products(args.date))
     elif command == 'date':
         if args.reset:
             current.reset_time()
@@ -85,7 +85,7 @@ def main():
     #buy command and buy arguments
     buy_parser = subparsers.add_parser('buy', help='buy and add product(s) to inventory')
     buy_parser.add_argument('--product', type=str, help='product name', required=True)
-    buy_parser.add_argument('--quantity', type=float, help='product quantity', default=1)
+    buy_parser.add_argument('--quantity', type=int, help='product quantity', default=1)
     buy_parser.add_argument('--cost', type=float, help='cost per product', required=True)
     buy_parser.add_argument('--exp-date', type=str, dest='exp_date', help='product expiration date', required=True)
     buy_parser.add_argument('--purch-date', type=str, dest='purch_date', help='product purchase date', default=current_day)
@@ -93,14 +93,14 @@ def main():
     #sell command and sell arguments
     sale_parser = subparsers.add_parser('sell', help='sell and remove product(s) from inventory')
     sale_parser.add_argument('--product', type=str, help='product name', required=True)
-    sale_parser.add_argument('--quantity', type=float, help='product quantity', default=1)
+    sale_parser.add_argument('--quantity', type=int, help='product quantity', default=1)
     sale_parser.add_argument('--price', type=float, help='price per product', required=True)
     sale_parser.add_argument('--purch-ID', type=str, dest='purch_id', help='product purchase ID', required=True)
     sale_parser.add_argument('--sell-date', type=str, dest='sell_date', help='product sale date', default=current_day)
 
     #discard command and discard arguments
     discard_parser = subparsers.add_parser('discard', help='discard and remove product(s) from inventory')
-    discard_parser.add_argument('--quantity', type=float, help='product quantity', default=1)
+    discard_parser.add_argument('--quantity', type=int, help='product quantity', default=1)
     discard_parser.add_argument('--purch-ID', type=str, dest='purch_id', help='product purchase ID', required=True)
 
     #plot command and plot arguments
@@ -124,9 +124,10 @@ def main():
 
     #date command and date arguments
     date_parser = subparsers.add_parser('date', help='modify current inventory date')
-    date_parser.add_argument('--advance', type=int, help='number of days')
-    date_parser.add_argument('--reverse', type=int, help='number of days')
-    date_parser.add_argument('--reset', action="store_true", help='reset date to current date')
+    date_group = date_parser.add_mutually_exclusive_group(required=True)
+    date_group.add_argument('--advance', type=int, help='number of days')
+    date_group.add_argument('--reverse', type=int, help='number of days')
+    date_group.add_argument('--reset', action="store_true", help='reset date to current date')
 
     args = parser.parse_args()
     return handle_args(args)

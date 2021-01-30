@@ -1,8 +1,7 @@
 from rich.console import Console
 from prettytable import PrettyTable
-from output_styling import superpy_theme
 
-console = Console(theme=superpy_theme)
+console = Console()
 
 def create_terminal_report(report_type, report):
     '''formats and prints a table report to terminal'''
@@ -18,15 +17,15 @@ def create_terminal_report(report_type, report):
     table.add_rows(report)
     table.align = 'r'
     console.print('\n')
-    console.print(title, style='success')
-    console.print(table, style='success')
+    console.print(title)
+    console.print(table)
 
     #print report footer if available
     if report_type in reports_with_footers:
         footer_padding = (3 * (len(table.field_names) - 1))
         table_width = sum(table._widths)
-        console.print('| ' + (' ' * (table_width - len(footer[0])) + ' ' * footer_padding) + footer[0] + ' |', style='success')
-        console.print('+-' + '-' * table_width + '-' * footer_padding + '-+', style='success')
+        console.print('| ' + (' ' * (table_width - len(footer[0])) + ' ' * footer_padding) + footer[0] + ' |')
+        console.print('+-' + '-' * table_width + '-' * footer_padding + '-+')
 
 def print_report(report):
     if report:
@@ -34,5 +33,5 @@ def print_report(report):
         report_body = report[1]
         create_terminal_report(report_type, report_body)
     else:
-        console.print('Failure: could not create report', style='failure')
+        console.print('Failure: could not create report')
         return None

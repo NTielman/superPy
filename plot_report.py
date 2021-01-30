@@ -1,9 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from rich.console import Console
-from output_styling import superpy_theme
 
-console = Console(theme=superpy_theme)
+console = Console()
 plt.style.use('dark_background')
 
 def create_graph(report_type, report_data):
@@ -61,7 +60,7 @@ def create_graph(report_type, report_data):
         plt.xticks(rotation=45)
         plt.legend()
     plt.tight_layout(pad=0.4)
-    console.print(f'Plotting {report_type} report...', style='process_info')
+    console.print(f'Plotting {report_type} report...')
     plt.show()
 
 def plot_report(report):
@@ -70,5 +69,5 @@ def plot_report(report):
         report_data = report[1]
         create_graph(report_type, report_data)
     else:
-        console.print('Failure: could not create report', style='failure')
+        console.print('Failure: could not create report')
         return None

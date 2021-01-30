@@ -1,8 +1,7 @@
 import os
 from rich.console import Console
-from output_styling import superpy_theme
 
-console = Console(theme=superpy_theme)
+console = Console()
 
 def create_directory(dir_name):
     '''creates a folder in current directory'''
@@ -13,7 +12,7 @@ def create_directory(dir_name):
     try:
         if not os.path.isdir(dir_path):
             os.makedirs(dir_path)
-            console.print(f'Created "{dir_name}" folder at {dir_path}', style='process_info')
+            console.print(f'Created "{dir_name}" folder at {dir_path}')
         return dir_path
     except Exception as e:
-            console.print(e, style='error')
+            console.print(e)

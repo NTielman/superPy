@@ -1,10 +1,6 @@
 import os
 import csv
-from rich.console import Console
 from create_directory import create_directory
-from output_styling import superpy_theme
-
-console = Console(theme=superpy_theme)
 
 def id_decoder(trans_id):
     '''returns product data based on 
