@@ -18,7 +18,7 @@ def create_csv_report(report_type, report, report_date):
         csv_writer = csv.writer(report_file)
         if report_type != 'inventory':
             csv_writer.writerows(report)
-        else:  # if inventory only save name and quantities
+        else:  # only save product name and quantities
             for row in report:
                 product = row[0]
                 quantity = row[1]

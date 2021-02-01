@@ -223,7 +223,7 @@ class Super_inventory():
         report.append(headers)
         inventory_products = {}
 
-        # find all product_id's with the same product_name
+        # find all product_id's associated with the same product
         for product_id in self.inventory:
             product_info = id_decoder(product_id)
             product_name = product_info['product_name']
@@ -390,7 +390,7 @@ class Super_inventory():
             product_info = id_decoder(product_id)
             product_name = product_info['product_name']
             quantity = self.inventory[product_id]
-            # sum the quantities of products who are the same
+            # sum the quantities of product-id's associated with same product
             if product_name in inventory_products:
                 inventory_products[product_name] += quantity
             else:
