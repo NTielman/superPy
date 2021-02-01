@@ -9,10 +9,7 @@ def create_directory(dir_name):
     file_dir = os.path.dirname(full_path)
     dir_path = os.path.join(file_dir, dir_name)
 
-    try:
-        if not os.path.isdir(dir_path):
-            os.makedirs(dir_path)
-            console.print(f'Created "{dir_name}" folder at {dir_path}')
-        return dir_path
-    except Exception as e:
-        console.print(e)
+    if not os.path.isdir(dir_path):
+        os.makedirs(dir_path)
+        console.print(f'Created "{dir_name}" folder at {dir_path}')
+    return dir_path

@@ -64,10 +64,10 @@ def create_graph(report_type, report_data):
     plt.show()
 
 def plot_report(report):
-    if report:
+    try:
         report_type = report[0]
         report_data = report[1]
         create_graph(report_type, report_data)
-    else:
+    except KeyError:
         console.print('Failure: could not create report')
         return None

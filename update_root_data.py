@@ -5,12 +5,12 @@ def root_inventory(dir_path, inventory):
     '''updates and re-writes root_inventory.csv'''
     inventory_file_path = os.path.join(dir_path, 'root_inventory.csv')
     with open(inventory_file_path, 'w', newline='') as csvfile:
-        headers = ['product', 'quantity']
+        headers = ['product_id', 'quantity']
         writer = csv.DictWriter(csvfile, fieldnames=headers)
         writer.writeheader()
-        for product in inventory:
+        for prod_id in inventory:
             writer.writerow(
-                {'product': product, 'quantity': inventory[product]})
+                {'product_id': prod_id, 'quantity': inventory[prod_id]})
 
 def root_expiry(dir_path, expiry_dates):
     '''updates and rewrites root_expiry_dates.csv'''

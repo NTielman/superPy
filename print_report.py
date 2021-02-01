@@ -29,10 +29,10 @@ def create_terminal_report(report_type, report):
         console.print('+-' + '-' * table_width + '-' * footer_padding + '-+')
 
 def print_report(report):
-    if report:
+    try:
         report_type = report[0]
         report_body = report[1]
         create_terminal_report(report_type, report_body)
-    else:
+    except KeyError:
         console.print('Failure: could not create report')
         return None

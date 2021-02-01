@@ -12,18 +12,15 @@ class Inventory_date():
         file_name = "root_date.txt"
         self.file_path = os.path.join(dir_path, file_name)
         try:
-            if not os.path.isfile(self.file_path):
-                self.current_date = date.today()
-                self.update_root_date()
-                console.print(
-                    f'Created "{file_name}" file at {self.file_path}')
-            else:
-                with open(self.file_path, 'r') as text_file:
-                    root_date = text_file.readline()
-                    self.current_date = date.fromisoformat(root_date)
-            console.print(f'\nCurrent date is: {self.current_date}')
-        except Exception as e:
-            console.print(e)
+            with open(self.file_path, 'r') as text_file:
+                root_date = text_file.readline()
+                self.current_date = date.fromisoformat(root_date)
+        except FileNotFoundError:
+            self.current_date = date.today()
+            self.update_root_date()
+            console.print(
+                f'Created "{file_name}" file at {self.file_path}')
+        console.print(f'\nCurrent date is: {self.current_date}')
 
     def advance_time(self, num_of_days):
         self.current_date += timedelta(days=num_of_days)

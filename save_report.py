@@ -16,11 +16,17 @@ def create_csv_report(report_type, report, report_date):
 
     with open(file_path, 'w', newline='') as report_file:
         csv_writer = csv.writer(report_file)
-        csv_writer.writerows(report)
+        if report_type != 'inventory':
+            csv_writer.writerows(report)
+        else:  # if inventory only save name and quantities
+            for row in report:
+                product = row[0]
+                quantity = row[1]
+                csv_writer.writerow([product, quantity])
     console.print(f'Success: "{file_name}" report was saved to: {dir_path}')
 
 def save_report(report, default_date=current_day):
-    if report:
+    try:
         report_type = report[0]
         report_body = report[1]
         report_date = default_date
@@ -30,6 +36,6 @@ def save_report(report, default_date=current_day):
             report_date = report[2]
 
         create_csv_report(report_type, report_body, report_date)
-    else:
+    except KeyError:
         console.print('Failure: could not create report')
         return None

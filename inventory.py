@@ -32,9 +32,9 @@ class Super_inventory():
             with open(inventory_path, newline='') as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
-                    product = row['product']
+                    product_id = row['product_id']
                     quantity = float(row['quantity'])
-                    self.inventory[product] = quantity
+                    self.inventory[product_id] = quantity
 
         # initialise expiry dates
         if os.path.isfile(expiry_path):
@@ -91,40 +91,40 @@ class Super_inventory():
         '''removes item(s) from inventory 
         without affecting sale/profit records'''
         product_info = id_decoder(purchase_id)
-        # check for errors
-        if not product_info:
-            console.print(f'Failure: no match found for ID: {purchase_id}')
-            return None
-        product = product_info['product_name']
-        exp_date = product_info['exp_date']
-        if (not (exp_date in self.expiry_dates)) or (not (product in self.expiry_dates[exp_date])):
+        try:
+            product = product_info['product_name']
+            exp_date = product_info['exp_date']
+
+            # update inventory
+            self.inventory[purchase_id] -= quantity
+            if self.inventory[purchase_id] <= 0:
+                del self.inventory[purchase_id]
+            update_root_data.root_inventory(self.dir_path, self.inventory)
+
+            # update expiry dsates
+            self.expiry_dates[exp_date][product] -= quantity
+            if self.expiry_dates[exp_date][product] <= 0:
+                del self.expiry_dates[exp_date][product]
+            update_root_data.root_expiry(self.dir_path, self.expiry_dates)
+
+            console.print(
+                f'Success: discarded {quantity} {product} from inventory')
+        except KeyError:
             console.print(
                 f'Failure: product not found or incorrect ID: {purchase_id}')
             return None
 
-        # update inventory
-        self.inventory[product] -= quantity
-        if self.inventory[product] <= 0:
-            del self.inventory[product]
-        update_root_data.root_inventory(self.dir_path, self.inventory)
-
-        # update expiry dsates
-        self.expiry_dates[exp_date][product] -= quantity
-        if self.expiry_dates[exp_date][product] <= 0:
-            del self.expiry_dates[exp_date][product]
-        update_root_data.root_expiry(self.dir_path, self.expiry_dates)
-
-        console.print(
-            f'Success: discarded {quantity} {product} from inventory')
-
     def buy(self, product, quantity, cost_per_unit, exp_date, purchase_date):
         '''adds a product to inventory and
-        adds product info to purchase records'''
+        adds product info to purchase records '''
+        # create purchase id
+        if not (purchase_date in self.purchases):
+            self.purchases[purchase_date] = []
+        trans_date = date.fromisoformat(purchase_date)
+        transaction_id = f'#SUP{trans_date.strftime("%y%m%d")}PURCH0{len(self.purchases[purchase_date]) + 1}'
+
         # update inventory
-        if product in self.inventory:
-            self.inventory[product] += quantity
-        else:
-            self.inventory[product] = quantity
+        self.inventory[transaction_id] = quantity
         update_root_data.root_inventory(self.dir_path, self.inventory)
 
         # update expiry dates
@@ -137,10 +137,6 @@ class Super_inventory():
         update_root_data.root_expiry(self.dir_path, self.expiry_dates)
 
         # update purchase records
-        if not (purchase_date in self.purchases):
-            self.purchases[purchase_date] = []
-        trans_date = date.fromisoformat(purchase_date)
-        transaction_id = f'#SUP{trans_date.strftime("%y%m%d")}PURCH0{len(self.purchases[purchase_date]) + 1}'
         purchase_info = {
             "product": product,
             "quantity": quantity,
@@ -160,57 +156,54 @@ class Super_inventory():
         '''removes a product from inventory and
         adds product info to sales records'''
         product_info = id_decoder(purchase_id)
-        # check for errors
-        if not product_info:
-            console.print(f'Failure: no match found for ID: {purchase_id}')
-            return None
-        if product_info['product_name'] != product:
-            console.print('Failure: product does not match purchase ID')
-            return None
-        if not (product in self.inventory):
-            console.print(f'Failure: "{product}" is no longer in stock')
-            return None
-        exp_date = product_info['exp_date']
-        unit_cost = product_info['unit_cost']
-        if (not (exp_date in self.expiry_dates)) or (not (product in self.expiry_dates[exp_date])):
-            console.print(f'Failure: "{product}" is no longer in stock')
-            return None
-        if quantity > self.expiry_dates[exp_date][product]:
+        try:
+            exp_date = product_info['exp_date']
+            unit_cost = product_info['unit_cost']
+
+            # check if user provided correct prod and purch_id
+            if product_info['product_name'] != product:
+                console.print('Failure: product does not match purchase ID')
+                return None
+
+            if quantity > self.inventory[purchase_id]:
+                console.print(
+                    f'Failure: not enough in stock to complete transaction')
+                return None
+
+            # update inventory
+            self.inventory[purchase_id] -= quantity
+            products_left = self.inventory[purchase_id]
+            if products_left <= 0:
+                del self.inventory[purchase_id]
+            update_root_data.root_inventory(self.dir_path, self.inventory)
+
+            # update expiry dates
+            self.expiry_dates[exp_date][product] -= quantity
+            if self.expiry_dates[exp_date][product] <= 0:
+                del self.expiry_dates[exp_date][product]
+            update_root_data.root_expiry(self.dir_path, self.expiry_dates)
+
+            # update sales records
+            if not (sell_date in self.sales):
+                self.sales[sell_date] = []
+            trans_date = date.fromisoformat(sell_date)
+            transaction_id = f'#SUP{trans_date.strftime("%y%m%d")}SALE0{len(self.sales[sell_date]) + 1}'
+            sale_info = {
+                "product": product,
+                "quantity": quantity,
+                "unit_cost": unit_cost,
+                "unit_price": price_per_unit,
+                "total_revenue": round((price_per_unit*quantity), 2),
+                "id": transaction_id
+            }
+            self.sales[sell_date].append(sale_info)
+            update_root_data.root_sales(self.dir_path, sell_date, sale_info)
+
             console.print(
-                f'Failure: quantity is too high or incorrect purchase ID provided')
+                f'Success: sold {quantity} {product} from inventory. Transaction ID: {transaction_id}')
+        except KeyError:
+            console.print(f'Failure: incorrect ID or "{product}" not in stock')
             return None
-
-        # update inventory
-        self.inventory[product] -= quantity
-        products_left = self.inventory[product]
-        if products_left <= 0:
-            del self.inventory[product]
-        update_root_data.root_inventory(self.dir_path, self.inventory)
-
-        # update expiry dates
-        self.expiry_dates[exp_date][product] -= quantity
-        if self.expiry_dates[exp_date][product] <= 0:
-            del self.expiry_dates[exp_date][product]
-        update_root_data.root_expiry(self.dir_path, self.expiry_dates)
-
-        # update sales records
-        if not (sell_date in self.sales):
-            self.sales[sell_date] = []
-        trans_date = date.fromisoformat(sell_date)
-        transaction_id = f'#SUP{trans_date.strftime("%y%m%d")}SALE0{len(self.sales[sell_date]) + 1}'
-        sale_info = {
-            "product": product,
-            "quantity": quantity,
-            "unit_cost": unit_cost,
-            "unit_price": price_per_unit,
-            "total_revenue": round((price_per_unit*quantity), 2),
-            "id": transaction_id
-        }
-        self.sales[sell_date].append(sale_info)
-        update_root_data.root_sales(self.dir_path, sell_date, sale_info)
-
-        console.print(
-            f'Success: sold {quantity} {product} from inventory. Transaction ID: {transaction_id}')
 
     def check_inventory_health(self):
         console.print('Running "Inventory Health" scan...')
@@ -226,12 +219,36 @@ class Super_inventory():
         '''returns a list of products and product quantities
         currently in stock'''
         report = []
-        headers = ['Product Name', 'Quantity In Stock']
+        headers = ['Product', 'Total Quantity', "Product id's", 'qty per id']
         report.append(headers)
+        inventory_products = {}
 
-        for product in self.inventory:
-            quantity = self.inventory[product]
-            report.append([product, quantity])
+        # find all product_id's with the same product_name
+        for product_id in self.inventory:
+            product_info = id_decoder(product_id)
+            product_name = product_info['product_name']
+            quantity = self.inventory[product_id]
+            if not (product_name in inventory_products):
+                inventory_products[product_name] = {}
+                inventory_products[product_name]['total quantity'] = quantity
+                inventory_products[product_name]['id quantities'] = [
+                    str(quantity)]
+                inventory_products[product_name]["product id's"] = [product_id]
+            else:
+                inventory_products[product_name]['total quantity'] += quantity
+                inventory_products[product_name]['id quantities'].append(
+                    str(quantity))
+                inventory_products[product_name]["product id's"].append(
+                    product_id)
+
+        for product in inventory_products:
+            total_quantity = inventory_products[product]['total quantity']
+            prod_id_list = "\n".join(
+                inventory_products[product]["product id's"])
+            id_quantities = "\n".join(
+                inventory_products[product]['id quantities'])
+            report.append([product, total_quantity,
+                           prod_id_list, id_quantities])
 
         if len(report) <= 1:  # if report only contains headers
             console.print('No items found in inventory')
@@ -244,8 +261,12 @@ class Super_inventory():
         headers = ['Product Name']
         report.append(headers)
 
-        for product in self.inventory:
-            report.append([product])
+        for product_id in self.inventory:
+            product_info = id_decoder(product_id)
+            product_name = product_info['product_name']
+            list_item = [product_name]
+            if not (list_item in report):
+                report.append(list_item)
 
         if len(report) <= 1:
             console.print('No items found in inventory')
@@ -363,9 +384,20 @@ class Super_inventory():
         report = []
         headers = ['Product Name', 'Quantity In Stock']
         report.append(headers)
+        inventory_products = {}
 
-        for product in self.inventory:
-            quantity = self.inventory[product]
+        for product_id in self.inventory:
+            product_info = id_decoder(product_id)
+            product_name = product_info['product_name']
+            quantity = self.inventory[product_id]
+            # sum the quantities of products who are the same
+            if product_name in inventory_products:
+                inventory_products[product_name] += quantity
+            else:
+                inventory_products[product_name] = quantity
+
+        for product in inventory_products:
+            quantity = inventory_products[product]
             if quantity <= minimum_qty:
                 report.append([product, quantity])
 
@@ -472,10 +504,3 @@ class Super_inventory():
         return ['best-selling products', report, trans_date]
 
 superpy = Super_inventory()
-
-# add purch id to sales report i self.sales on every sale. adjust __init__ tmb
-# either inventory or expiry dates needs to refer back to purch id. in plaats van apples: 3 prod_id: 3. if invemtory orei get inv report ta decode prod name, amd tells them all op bij elkaar
-# on sale the qty after purchid gets updated
-# product lookup: --product apples returns inventory qty di apples i onderverdeling
-# i tur active purchid's ku tin e product name "apples" {apples: 8 - waarvan purchid1:5 -purchid2:3}
-# id lookup --purch or sale id returns prodname, cost, price, qty and if its still in stock
