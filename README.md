@@ -20,7 +20,13 @@ It should now display the usage of the Tool. To read more about creating and int
 
 
 ## Screenshots
-![alt text](https://github.com/NTielman/Ask-a-lotl/blob/master/axolotl_webpage/Images/askalotl_preview.png "ASk a lotl Preview image")
+![alt text](https://github.com/NTielman/superPy/blob/main/Preview_images/superpy_preview1.png "Superpy Add items Preview image")
+
+
+![alt text](https://github.com/NTielman/superPy/blob/main/Preview_images/superpy_preview3.png "Superpy low-stock report Preview image")
+
+
+![alt text](https://github.com/NTielman/superPy/blob/main/Preview_images/superpy_preview2.png "Superpy purchase report Preview image")
 
 
 ## Usage & Details 
