@@ -12,7 +12,7 @@ A CLI Tool for creating and tracking an inventory
 
 ## Setup 
 1. Clone the repository and with Python3 create a virtual environment in the directory.
-2. Activate the environment `source /<your_env_name>/bin/./activate` 
+2. Activate the environment `source <your_env_name>/bin/activate` 
 3. Install the necessary dependencies `pip install -r requirements.txt` 
 4. Check if everything was setup correctly, run `python main.py -h` 
 
